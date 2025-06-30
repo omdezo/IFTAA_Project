@@ -1,5 +1,7 @@
 pymilvus
 sentence-transformers
+sentencepiece
 torch
 tqdm
-Flask 
+Flask
+langdetect 
