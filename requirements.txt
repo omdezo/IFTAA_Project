@@ -1,7 +1,8 @@
 pymilvus
 sentence-transformers
-sentencepiece
 torch
 tqdm
 Flask
-langdetect 
+transformers
+accelerate
+torchaudio 
