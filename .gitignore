@@ -1,0 +1,9 @@
+# IFTAA_Project specific
+[Oo]bj/
+[Bb]in/
+
+# Milvus data
+volumes/
+
+# Cleaned data
+fatwas.json 
