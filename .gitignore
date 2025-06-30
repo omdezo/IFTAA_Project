@@ -6,4 +6,9 @@
 volumes/
 
 # Cleaned data
-fatwas.json 
+fatwas.json
+
+# Enriched data cache
+fatwas_multilingual.json
+fatwas_multilingual_seamless.json
+app.log 

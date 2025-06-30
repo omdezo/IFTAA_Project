@@ -71,3 +71,90 @@
 2025-06-30 17:41:13,757 INFO werkzeug : 127.0.0.1 - - [30/Jun/2025 17:41:13] "POST /search HTTP/1.1" 200 -
 2025-06-30 17:41:44,932 INFO werkzeug : 127.0.0.1 - - [30/Jun/2025 17:41:44] "POST /search HTTP/1.1" 200 -
 2025-06-30 17:41:53,743 INFO werkzeug : 127.0.0.1 - - [30/Jun/2025 17:41:53] "POST /search HTTP/1.1" 200 -
+2025-06-30 17:48:21,961 INFO sentence_transformers.SentenceTransformer : Use pytorch device_name: cuda:0
+2025-06-30 17:48:21,961 INFO sentence_transformers.SentenceTransformer : Load pretrained SentenceTransformer: sentence-transformers/paraphrase-multilingual-mpnet-base-v2
+2025-06-30 17:48:21,964 DEBUG urllib3.connectionpool : Starting new HTTPS connection (1): huggingface.co:443
+2025-06-30 17:48:22,341 DEBUG urllib3.connectionpool : https://huggingface.co:443 "HEAD /sentence-transformers/paraphrase-multilingual-mpnet-base-v2/resolve/main/modules.json HTTP/1.1" 307 0
+2025-06-30 17:48:22,351 DEBUG urllib3.connectionpool : https://huggingface.co:443 "HEAD /api/resolve-cache/models/sentence-transformers/paraphrase-multilingual-mpnet-base-v2/84fccfe766bcfd679e39efefe4ebf45af190ad2d/modules.json HTTP/1.1" 200 0
+2025-06-30 17:48:22,596 DEBUG urllib3.connectionpool : https://huggingface.co:443 "HEAD /sentence-transformers/paraphrase-multilingual-mpnet-base-v2/resolve/main/config_sentence_transformers.json HTTP/1.1" 307 0
+2025-06-30 17:48:22,629 DEBUG urllib3.connectionpool : https://huggingface.co:443 "HEAD /api/resolve-cache/models/sentence-transformers/paraphrase-multilingual-mpnet-base-v2/84fccfe766bcfd679e39efefe4ebf45af190ad2d/config_sentence_transformers.json HTTP/1.1" 200 0
+2025-06-30 17:48:22,864 DEBUG urllib3.connectionpool : https://huggingface.co:443 "HEAD /sentence-transformers/paraphrase-multilingual-mpnet-base-v2/resolve/main/README.md HTTP/1.1" 307 0
+2025-06-30 17:48:22,879 DEBUG urllib3.connectionpool : https://huggingface.co:443 "HEAD /api/resolve-cache/models/sentence-transformers/paraphrase-multilingual-mpnet-base-v2/84fccfe766bcfd679e39efefe4ebf45af190ad2d/README.md HTTP/1.1" 200 0
+2025-06-30 17:48:23,111 DEBUG urllib3.connectionpool : https://huggingface.co:443 "HEAD /sentence-transformers/paraphrase-multilingual-mpnet-base-v2/resolve/main/modules.json HTTP/1.1" 307 0
+2025-06-30 17:48:23,127 DEBUG urllib3.connectionpool : https://huggingface.co:443 "HEAD /api/resolve-cache/models/sentence-transformers/paraphrase-multilingual-mpnet-base-v2/84fccfe766bcfd679e39efefe4ebf45af190ad2d/modules.json HTTP/1.1" 200 0
+2025-06-30 17:48:23,356 DEBUG urllib3.connectionpool : https://huggingface.co:443 "HEAD /sentence-transformers/paraphrase-multilingual-mpnet-base-v2/resolve/main/sentence_bert_config.json HTTP/1.1" 307 0
+2025-06-30 17:48:23,380 DEBUG urllib3.connectionpool : https://huggingface.co:443 "HEAD /api/resolve-cache/models/sentence-transformers/paraphrase-multilingual-mpnet-base-v2/84fccfe766bcfd679e39efefe4ebf45af190ad2d/sentence_bert_config.json HTTP/1.1" 200 0
+2025-06-30 17:48:23,604 DEBUG urllib3.connectionpool : https://huggingface.co:443 "HEAD /sentence-transformers/paraphrase-multilingual-mpnet-base-v2/resolve/main/adapter_config.json HTTP/1.1" 404 0
+2025-06-30 17:48:23,836 DEBUG urllib3.connectionpool : https://huggingface.co:443 "HEAD /sentence-transformers/paraphrase-multilingual-mpnet-base-v2/resolve/main/config.json HTTP/1.1" 307 0
+2025-06-30 17:48:23,852 DEBUG urllib3.connectionpool : https://huggingface.co:443 "HEAD /api/resolve-cache/models/sentence-transformers/paraphrase-multilingual-mpnet-base-v2/84fccfe766bcfd679e39efefe4ebf45af190ad2d/config.json HTTP/1.1" 200 0
+2025-06-30 17:48:25,121 DEBUG urllib3.connectionpool : https://huggingface.co:443 "HEAD /sentence-transformers/paraphrase-multilingual-mpnet-base-v2/resolve/main/tokenizer_config.json HTTP/1.1" 307 0
+2025-06-30 17:48:25,138 DEBUG urllib3.connectionpool : https://huggingface.co:443 "HEAD /api/resolve-cache/models/sentence-transformers/paraphrase-multilingual-mpnet-base-v2/84fccfe766bcfd679e39efefe4ebf45af190ad2d/tokenizer_config.json HTTP/1.1" 200 0
+2025-06-30 17:48:25,404 DEBUG urllib3.connectionpool : https://huggingface.co:443 "GET /api/models/sentence-transformers/paraphrase-multilingual-mpnet-base-v2/tree/main/additional_chat_templates?recursive=False&expand=False HTTP/1.1" 404 64
+2025-06-30 17:48:26,455 DEBUG urllib3.connectionpool : https://huggingface.co:443 "GET /api/models/sentence-transformers/paraphrase-multilingual-mpnet-base-v2/revision/main HTTP/1.1" 200 6331
+2025-06-30 17:48:26,705 DEBUG urllib3.connectionpool : https://huggingface.co:443 "GET /api/models/sentence-transformers/paraphrase-multilingual-mpnet-base-v2 HTTP/1.1" 200 6331
+2025-06-30 17:48:27,484 INFO werkzeug : 127.0.0.1 - - [30/Jun/2025 17:48:27] "POST /search HTTP/1.1" 200 -
+2025-06-30 17:48:28,384 INFO werkzeug : [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5001
+2025-06-30 17:48:28,384 INFO werkzeug : [33mPress CTRL+C to quit[0m
+2025-06-30 17:48:42,679 INFO werkzeug : 127.0.0.1 - - [30/Jun/2025 17:48:42] "POST /search HTTP/1.1" 200 -
+2025-06-30 18:16:48,585 ERROR app : An error occurred during search
+Traceback (most recent call last):
+  File "C:\Users\omara\OneDrive\Desktop\IFTAA_Project\app.py", line 54, in search
+  File "C:\Users\omara\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pymilvus\orm\collection.py", line 800, in search
+    resp = conn.search(
+           ^^^^^^^^^^^^
+  File "C:\Users\omara\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pymilvus\decorators.py", line 141, in handler
+    raise e from e
+  File "C:\Users\omara\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pymilvus\decorators.py", line 137, in handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\omara\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pymilvus\decorators.py", line 173, in handler
+    return func(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\omara\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pymilvus\decorators.py", line 116, in handler
+    raise e from e
+  File "C:\Users\omara\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pymilvus\decorators.py", line 86, in handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\omara\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pymilvus\client\grpc_handler.py", line 924, in search
+    return self._execute_search(request, timeout, round_decimal=round_decimal, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\omara\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pymilvus\client\grpc_handler.py", line 861, in _execute_search
+    raise e from e
+  File "C:\Users\omara\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pymilvus\client\grpc_handler.py", line 850, in _execute_search
+    check_status(response.status)
+  File "C:\Users\omara\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pymilvus\client\utils.py", line 64, in check_status
+    raise MilvusException(status.code, status.reason, status.error_code)
+pymilvus.exceptions.MilvusException: <MilvusException: (code=101, message=failed to search: collection not loaded[collection=459083640145992698])>
+2025-06-30 18:16:48,668 INFO werkzeug : 127.0.0.1 - - [30/Jun/2025 18:16:48] "[35m[1mPOST /search HTTP/1.1[0m" 500 -
+2025-06-30 18:16:59,140 INFO werkzeug : 127.0.0.1 - - [30/Jun/2025 18:16:59] "POST /search HTTP/1.1" 200 -
+2025-06-30 18:18:55,499 ERROR app : An error occurred during search
+Traceback (most recent call last):
+  File "C:\Users\omara\OneDrive\Desktop\IFTAA_Project\app.py", line 54, in search
+  File "C:\Users\omara\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pymilvus\orm\collection.py", line 800, in search
+    resp = conn.search(
+           ^^^^^^^^^^^^
+  File "C:\Users\omara\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pymilvus\decorators.py", line 141, in handler
+    raise e from e
+  File "C:\Users\omara\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pymilvus\decorators.py", line 137, in handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\omara\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pymilvus\decorators.py", line 173, in handler
+    return func(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\omara\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pymilvus\decorators.py", line 116, in handler
+    raise e from e
+  File "C:\Users\omara\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pymilvus\decorators.py", line 86, in handler
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\omara\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pymilvus\client\grpc_handler.py", line 924, in search
+    return self._execute_search(request, timeout, round_decimal=round_decimal, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\omara\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pymilvus\client\grpc_handler.py", line 861, in _execute_search
+    raise e from e
+  File "C:\Users\omara\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pymilvus\client\grpc_handler.py", line 850, in _execute_search
+    check_status(response.status)
+  File "C:\Users\omara\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pymilvus\client\utils.py", line 64, in check_status
+    raise MilvusException(status.code, status.reason, status.error_code)
+pymilvus.exceptions.MilvusException: <MilvusException: (code=101, message=failed to search: collection not loaded[collection=459083640145993445])>
+2025-06-30 18:18:55,509 INFO werkzeug : 127.0.0.1 - - [30/Jun/2025 18:18:55] "[35m[1mPOST /search HTTP/1.1[0m" 500 -
