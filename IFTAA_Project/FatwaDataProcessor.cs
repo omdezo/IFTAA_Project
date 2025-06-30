@@ -34,11 +34,17 @@ namespace IFTAA_Project
             using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
             {
                 var records = csv.GetRecords<Fatwa>().ToList();
-                foreach (var record in records)
+                
+                var distinctRecords = records
+                    .GroupBy(f => new { f.Title, f.Question })
+                    .Select(g => g.First())
+                    .ToList();
+
+                foreach (var record in distinctRecords)
                 {
                     record.FatwaAnswer = CleanHtml(record.FatwaAnswer);
                 }
-                return records;
+                return distinctRecords;
             }
         }
 
