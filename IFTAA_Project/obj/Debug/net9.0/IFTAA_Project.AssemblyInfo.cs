@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("IFTAA_Project")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b0e9ba410aaa4612e67ef5408c37bea387f71588")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5eb2ec4dd867a8847a65bfd1b62f5c484bfb7c3a")]
 [assembly: System.Reflection.AssemblyProductAttribute("IFTAA_Project")]
 [assembly: System.Reflection.AssemblyTitleAttribute("IFTAA_Project")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -1,4 +1,5 @@
 pymilvus
 sentence-transformers
 torch
-tqdm 
+tqdm
+Flask 
