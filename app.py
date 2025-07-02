@@ -1,8 +1,9 @@
 from flask import Flask, request, jsonify
-from pymilvus import connections, Collection, utility
+from pymilvus import connections, Collection, utility, FieldSchema, CollectionSchema, DataType
 from sentence_transformers import SentenceTransformer
 import re
 import json
+import time
 
 app = Flask(__name__)
 
@@ -11,6 +12,9 @@ MILVUS_HOST = "127.0.0.1"
 MILVUS_PORT = "19530"
 MODEL_NAME = 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
 TOP_K = 5
+FATWAS_AR_COLLECTION = "fatwas_ar"
+FATWAS_EN_COLLECTION = "fatwas_en"
+QUERIES_COLLECTION = "search_queries"
 
 # --- Quran Detector Class ---
 class QuranDetector:
@@ -36,81 +40,80 @@ class QuranDetector:
 print("Loading model and connecting to Milvus...")
 connections.connect("default", host=MILVUS_HOST, port=MILVUS_PORT)
 model = SentenceTransformer(MODEL_NAME)
+embedding_dim = model.get_sentence_embedding_dimension()
 detector = QuranDetector("quran_surahs.json")
 
-# Get collection handles
-collection_ar = Collection("fatwas_ar")
-collection_en = Collection("fatwas_en")
+# Load fatwa collections
+collection_ar = Collection(FATWAS_AR_COLLECTION)
+collection_ar.load()
+collection_en = Collection(FATWAS_EN_COLLECTION)
+collection_en.load()
 
+# Create search_queries collection if it doesn't exist
+if not utility.has_collection(QUERIES_COLLECTION):
+    fields = [
+        FieldSchema(name="pk", dtype=DataType.VARCHAR, is_primary=True, auto_id=True, max_length=100),
+        FieldSchema(name="original_query", dtype=DataType.VARCHAR, max_length=1000),
+        FieldSchema(name="timestamp", dtype=DataType.INT64),
+        FieldSchema(name="user_id", dtype=DataType.VARCHAR, max_length=256),
+        FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=embedding_dim)
+    ]
+    schema = CollectionSchema(fields, "User Search Queries")
+    collection_queries = Collection(QUERIES_COLLECTION, schema)
+    collection_queries.create_index(field_name="embedding", index_params={"metric_type": "L2", "index_type": "IVF_FLAT", "params": {"nlist": 1024}})
+else:
+    collection_queries = Collection(QUERIES_COLLECTION)
+
+collection_queries.load()
 print("Initialization complete. Ready for search requests.")
 
 @app.route('/search', methods=['POST'])
 def search():
-    try:
-        data = request.get_json()
-        query = data.get('query', '')
-        lang = data.get('lang', 'ar').lower()
+    data = request.get_json()
+    query = data.get('query', '')
+    lang = data.get('lang', 'ar').lower()
+    user_id = data.get('user_id', 'anonymous')
 
-        if not query:
-            return jsonify({"error": "Query parameter is required"}), 400
+    if not query:
+        return jsonify({"error": "Query parameter is required"}), 400
+    
+    # 1. Create embedding ONCE
+    query_embedding = model.encode([query])
 
-        if lang == 'ar':
-            collection = collection_ar
-            embedding_field = "embedding_ar"
-            output_fields = ["pk", "title_ar", "question_ar", "answer_ar", "quranic_verses"]
-        else:
-            collection = collection_en
-            embedding_field = "embedding_en"
-            output_fields = ["pk", "title_en", "question_en", "answer_en", "quranic_verses"]
-        
-        # Ensure the selected collection is loaded before any search operation
-        if utility.load_state(collection.name) != "Loaded":
-            collection.load(replica_number=1)
-            utility.wait_for_loading_complete(collection.name)
+    # 2. Upsert query embedding into "search_queries"
+    query_entity = {
+        "original_query": query,
+        "timestamp": int(time.time()),
+        "user_id": user_id,
+        "embedding": query_embedding[0]
+    }
+    upsert_result = collection_queries.insert([query_entity])
+    query_embedding_id = upsert_result.primary_keys[0]
 
-        quranic_citations = detector.extract_citations(query)
-        search_type = "semantic"
-        search_results = None
+    # 3. Use the same embedding to search documents
+    collection_to_search = collection_ar if lang == 'ar' else collection_en
+    embedding_field = "embedding_ar" if lang == 'ar' else "embedding_en"
+    output_fields = ["title_ar", "question_ar"] if lang == 'ar' else ["title_en", "question_en"]
 
-        if quranic_citations:
-            search_type = "hybrid_quranic"
-            # Combine filters: must be Quranic AND contain one of the verses
-            verse_expr = " or ".join([f'array_contains(quranic_verses, "{citation}")' for citation in quranic_citations])
-            expr = f'is_quranic_related == "True" and ({verse_expr})'
-            
-            search_results = collection.search(
-                data=model.encode([query]),
-                anns_field=embedding_field,
-                param={"metric_type": "L2", "params": {"nprobe": 10}},
-                limit=TOP_K,
-                expr=expr,
-                output_fields=output_fields
-            )
+    search_params = {"metric_type": "L2", "params": {"nprobe": 10}}
+    results = collection_to_search.search(
+        data=query_embedding,
+        anns_field=embedding_field,
+        param=search_params,
+        limit=TOP_K,
+        output_fields=output_fields
+    )
+    
+    # 5. Format the output
+    output = []
+    for hit in results[0]:
+        output.append({
+            "score": hit.distance,
+            "fatwa_id": hit.id,
+            "result": hit.entity.to_dict()
+        })
 
-        # Fallback or default semantic search
-        if not search_results or not search_results[0]:
-            search_type = "semantic_fallback" if quranic_citations else "semantic"
-            search_results = collection.search(
-                data=model.encode([query]),
-                anns_field=embedding_field,
-                param={"metric_type": "L2", "params": {"nprobe": 10}},
-                limit=TOP_K,
-                output_fields=output_fields
-            )
-        
-        # Format and return results
-        output = {"search_type": search_type, "results": []}
-        if search_results:
-            for hit in search_results[0]:
-                output["results"].append({
-                    "score": hit.distance,
-                    "fatwa_id": hit.id,
-                    "result": hit.entity.to_dict()['entity']
-                })
-        
-        return jsonify(output)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify(output)
 
 if __name__ == '__main__':
     app.run(port=5001, debug=False) 
