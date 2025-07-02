@@ -45,9 +45,7 @@ detector = QuranDetector("quran_surahs.json")
 
 # Load fatwa collections
 collection_ar = Collection(FATWAS_AR_COLLECTION)
-collection_ar.load()
 collection_en = Collection(FATWAS_EN_COLLECTION)
-collection_en.load()
 
 # Create search_queries collection if it doesn't exist
 if not utility.has_collection(QUERIES_COLLECTION):
@@ -64,7 +62,6 @@ if not utility.has_collection(QUERIES_COLLECTION):
 else:
     collection_queries = Collection(QUERIES_COLLECTION)
 
-collection_queries.load()
 print("Initialization complete. Ready for search requests.")
 
 @app.route('/search', methods=['POST'])
@@ -95,6 +92,11 @@ def search():
     embedding_field = "embedding_ar" if lang == 'ar' else "embedding_en"
     output_fields = ["title_ar", "question_ar"] if lang == 'ar' else ["title_en", "question_en"]
 
+    # Ensure collection is loaded
+    if utility.load_state(collection_to_search.name) != "Loaded":
+        collection_to_search.load()
+        utility.wait_for_loading_complete(collection_to_search.name)
+
     search_params = {"metric_type": "L2", "params": {"nprobe": 10}}
     results = collection_to_search.search(
         data=query_embedding,
@@ -105,15 +107,21 @@ def search():
     )
     
     # 5. Format the output
-    output = []
-    for hit in results[0]:
-        output.append({
-            "score": hit.distance,
-            "fatwa_id": hit.id,
-            "result": hit.entity.to_dict()
-        })
+    response_data = {
+        "query_embedding_id": query_embedding_id,
+        "results": []
+    }
+    
+    if results:
+        for hit in results[0]:
+            snippet_text = hit.entity.get('question_ar') or hit.entity.get('question_en')
+            response_data["results"].append({
+                "document_id": str(hit.id),
+                "score": hit.distance,
+                "snippet": snippet_text[:250] + "..." if snippet_text else ""
+            })
 
-    return jsonify(output)
+    return jsonify(response_data)
 
 if __name__ == '__main__':
     app.run(port=5001, debug=False) 
