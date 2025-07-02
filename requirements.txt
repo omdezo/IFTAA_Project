@@ -5,4 +5,5 @@ tqdm
 Flask
 transformers
 accelerate
-torchaudio 
+torchaudio
+FlagEmbedding 

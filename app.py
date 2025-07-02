@@ -1,125 +1,72 @@
 from flask import Flask, request, jsonify
-from pymilvus import connections, Collection, utility, FieldSchema, CollectionSchema, DataType
+from pymilvus import connections, Collection
 from sentence_transformers import SentenceTransformer
-import re
-import json
-import time
+from FlagEmbedding import FlagReranker
 
 app = Flask(__name__)
 
 # --- Configuration ---
 MILVUS_HOST = "127.0.0.1"
 MILVUS_PORT = "19530"
-MODEL_NAME = 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
-TOP_K = 5
-FATWAS_AR_COLLECTION = "fatwas_ar"
-FATWAS_EN_COLLECTION = "fatwas_en"
-QUERIES_COLLECTION = "search_queries"
-
-# --- Quran Detector Class ---
-class QuranDetector:
-    def __init__(self, surah_file_path):
-        with open(surah_file_path, 'r', encoding='utf-8') as f:
-            self.surahs_data = json.load(f)
-        surah_names = [re.escape(s['titleAr']) for s in self.surahs_data]
-        self.surah_pattern = re.compile(r'سورة\s*(' + '|'.join(surah_names) + r')')
-        self.verse_pattern = re.compile(r'[\(\[]\s*([^\s:\)\]]+)\s*:\s*(\d+)\s*[\)\]]')
-
-    def extract_citations(self, text):
-        citations = []
-        found_surahs = self.surah_pattern.findall(text)
-        for surah_name in found_surahs:
-            citations.append(f"سورة {surah_name.strip()}")
-        found_verses = self.verse_pattern.findall(text)
-        for surah_name, verse_num in found_verses:
-            cleaned_surah_name = surah_name.strip()
-            citations.append(f"{cleaned_surah_name}:{verse_num.strip()}")
-        return list(set(c for c in citations if "Title" not in c and "Answer" not in c and "Question" not in c))
+RETRIEVER_MODEL = 'Omartificial-Intelligence-Space/GATE-AraBert-v1'
+RERANKER_MODEL = 'BAAI/bge-reranker-base'
+TOP_K_RETRIEVE = 25  # Retrieve more results initially
+TOP_K_RERANK = 5   # Return the top 5 after re-ranking
 
 # --- Global Initialization ---
-print("Loading model and connecting to Milvus...")
+print("Loading models and connecting to Milvus...")
 connections.connect("default", host=MILVUS_HOST, port=MILVUS_PORT)
-model = SentenceTransformer(MODEL_NAME)
-embedding_dim = model.get_sentence_embedding_dimension()
-detector = QuranDetector("quran_surahs.json")
+retriever = SentenceTransformer(RETRIEVER_MODEL)
+reranker = FlagReranker(RERANKER_MODEL)
 
-# Load fatwa collections
-collection_ar = Collection(FATWAS_AR_COLLECTION)
+collection_ar = Collection("fatwas_ar_v2")
 collection_ar.load()
-collection_en = Collection(FATWAS_EN_COLLECTION)
+collection_en = Collection("fatwas_en_v2")
 collection_en.load()
-
-# Create search_queries collection if it doesn't exist
-if not utility.has_collection(QUERIES_COLLECTION):
-    fields = [
-        FieldSchema(name="pk", dtype=DataType.VARCHAR, is_primary=True, auto_id=True, max_length=100),
-        FieldSchema(name="original_query", dtype=DataType.VARCHAR, max_length=1000),
-        FieldSchema(name="timestamp", dtype=DataType.INT64),
-        FieldSchema(name="user_id", dtype=DataType.VARCHAR, max_length=256),
-        FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=embedding_dim)
-    ]
-    schema = CollectionSchema(fields, "User Search Queries")
-    collection_queries = Collection(QUERIES_COLLECTION, schema)
-    collection_queries.create_index(field_name="embedding", index_params={"metric_type": "L2", "index_type": "IVF_FLAT", "params": {"nlist": 1024}})
-else:
-    collection_queries = Collection(QUERIES_COLLECTION)
-
-collection_queries.load()
-print("Initialization complete. Ready for search requests.")
+print("Initialization complete.")
 
 @app.route('/search', methods=['POST'])
 def search():
     data = request.get_json()
     query = data.get('query', '')
     lang = data.get('lang', 'ar').lower()
-    user_id = data.get('user_id', 'anonymous')
 
     if not query:
-        return jsonify({"error": "Query parameter is required"}), 400
+        return jsonify({"error": "Query is required"}), 400
+
+    collection = collection_ar if lang == 'ar' else collection_en
     
-    # 1. Create embedding ONCE
-    query_embedding = model.encode([query])
-
-    # 2. Upsert query embedding into "search_queries"
-    query_entity = {
-        "original_query": query,
-        "timestamp": int(time.time()),
-        "user_id": user_id,
-        "embedding": query_embedding[0]
-    }
-    upsert_result = collection_queries.insert([query_entity])
-    query_embedding_id = upsert_result.primary_keys[0]
-
-    # 3. Use the same embedding to search documents
-    collection_to_search = collection_ar if lang == 'ar' else collection_en
-    embedding_field = "embedding_ar" if lang == 'ar' else "embedding_en"
-    output_fields = ["title_ar", "question_ar"] if lang == 'ar' else ["title_en", "question_en"]
-
-    search_params = {"metric_type": "L2", "params": {"nprobe": 10}}
-    results = collection_to_search.search(
+    # 1. Retrieve
+    query_embedding = retriever.encode([query])
+    search_results = collection.search(
         data=query_embedding,
-        anns_field=embedding_field,
-        param=search_params,
-        limit=TOP_K,
-        output_fields=output_fields
+        anns_field="embedding",
+        param={"metric_type": "L2", "params": {"nprobe": 10}},
+        limit=TOP_K_RETRIEVE,
+        output_fields=["title", "question", "answer"]
     )
-    
-    # 5. Format the output
-    output = {"search_type": lang, "results": []}
-    if results:
-        for hit in results[0]:
-            entity = hit.entity
-            output["results"].append({
-                "score": hit.distance,
-                "fatwa_id": hit.id,
-                "result": {
-                    "title": entity.get("title_ar") or entity.get("title_en"),
-                    "question": entity.get("question_ar") or entity.get("question_en"),
-                    "answer": entity.get("answer_ar") or entity.get("answer_en"),
-                    "quranic_verses": list(entity.get("quranic_verses")) if entity.get("quranic_verses") else []
-                }
-            })
 
+    # 2. Re-rank
+    passages = [f"{hit.entity.get('title')}. {hit.entity.get('question')}" for hit in search_results[0]]
+    scores = reranker.compute_score([[query, p] for p in passages])
+    
+    # Combine hits with new scores and sort
+    reranked_hits = sorted(zip(scores, search_results[0]), key=lambda x: x[0], reverse=True)
+    
+    # 3. Format Output
+    output = []
+    for score, hit in reranked_hits[:TOP_K_RERANK]:
+        output.append({
+            "rerank_score": score,
+            "original_score": hit.distance,
+            "fatwa_id": hit.id,
+            "result": {
+                "title": hit.entity.get("title"),
+                "question": hit.entity.get("question"),
+                "answer": hit.entity.get("answer")
+            }
+        })
+    
     return jsonify(output)
 
 if __name__ == '__main__':
