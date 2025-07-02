@@ -1,23 +1,19 @@
 from flask import Flask, request, jsonify
 from pymilvus import connections, Collection
 from sentence_transformers import SentenceTransformer
-from FlagEmbedding import FlagReranker
 
 app = Flask(__name__)
 
 # --- Configuration ---
 MILVUS_HOST = "127.0.0.1"
 MILVUS_PORT = "19530"
-RETRIEVER_MODEL = 'Omartificial-Intelligence-Space/GATE-AraBert-v1'
-RERANKER_MODEL = 'BAAI/bge-reranker-base'
-TOP_K_RETRIEVE = 25  # Retrieve more results initially
-TOP_K_RERANK = 5   # Return the top 5 after re-ranking
+MODEL_NAME = 'Omartificial-Intelligence-Space/GATE-AraBert-v1'
+TOP_K = 5
 
 # --- Global Initialization ---
-print("Loading models and connecting to Milvus...")
+print("Loading model and connecting to Milvus...")
 connections.connect("default", host=MILVUS_HOST, port=MILVUS_PORT)
-retriever = SentenceTransformer(RETRIEVER_MODEL)
-reranker = FlagReranker(RERANKER_MODEL)
+model = SentenceTransformer(MODEL_NAME)
 
 collection_ar = Collection("fatwas_ar_v2")
 collection_ar.load()
@@ -36,38 +32,25 @@ def search():
 
     collection = collection_ar if lang == 'ar' else collection_en
     
-    # 1. Retrieve
-    query_embedding = retriever.encode([query])
+    query_embedding = model.encode([query])
     search_results = collection.search(
         data=query_embedding,
         anns_field="embedding",
         param={"metric_type": "L2", "params": {"nprobe": 10}},
-        limit=TOP_K_RETRIEVE,
+        limit=TOP_K,
         output_fields=["title", "question", "answer"]
     )
 
-    # 2. Re-rank
-    passages = [f"{hit.entity.get('title')}. {hit.entity.get('question')}" for hit in search_results[0]]
-    scores = reranker.compute_score([[query, p] for p in passages])
-    
-    # Combine hits with new scores and sort
-    reranked_hits = sorted(zip(scores, search_results[0]), key=lambda x: x[0], reverse=True)
-    
-    # 3. Format Output
     output = []
-    for score, hit in reranked_hits[:TOP_K_RERANK]:
-        output.append({
-            "rerank_score": score,
-            "original_score": hit.distance,
-            "fatwa_id": hit.id,
-            "result": {
-                "title": hit.entity.get("title"),
-                "question": hit.entity.get("question"),
-                "answer": hit.entity.get("answer")
-            }
-        })
+    if search_results and search_results[0]:
+        for hit in search_results[0]:
+            output.append({
+                "score": hit.distance,
+                "fatwa_id": hit.id,
+                "result": hit.entity.to_dict()
+            })
     
-    return jsonify(output)
+    return jsonify({"results": output})
 
 if __name__ == '__main__':
     app.run(port=5001, debug=False) 
