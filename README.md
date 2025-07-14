@@ -72,7 +72,7 @@ curl http://localhost:5001/health
 
 **Option A: Using Postman (Recommended)**
 1. Download [Postman](https://www.postman.com/downloads/)
-2. Import the collection: `postman/IFTAA_Complete_APIs.postman_collection.json`
+2. Import the collection: `postman/IFTAA_Complete_APIs.postman_collection_last.json`
 3. Test the search endpoint
 
 **Option B: Using curl**
@@ -133,26 +133,88 @@ IFTAA System
 - **Similar Fatwas**: Find related fatwas using semantic similarity
 - **Fallback Search**: MongoDB text search when vector search fails
 
-## 🧪 API Testing
+## 🧪 API Testing with Postman
 
-### Import Postman Collection
+### 📥 Import Postman Collection
 
 1. **Download Postman**: [https://www.postman.com/downloads/](https://www.postman.com/downloads/)
 2. **Import Collection**: 
    - Open Postman
-   - Click "Import"
-   - Select `postman/IFTAA_Complete_APIs.postman_collection.json`
+   - Click "Import" button
+   - Select `postman/IFTAA_Complete_APIs.postman_collection_last.json`
+   - Click "Import" to add the collection
 3. **Set Environment Variables**:
-   - `base_url`: `http://localhost:8080`
-   - `python_url`: `http://localhost:5001`
+   - Click "Environments" → "New"
+   - Name: `IFTAA Local`
+   - Add variables:
+     - `base_url`: `http://localhost:8080`
+     - `python_url`: `http://localhost:5001`
+   - Click "Save"
+   - Select the environment from the dropdown
 
-### Test Categories
+### 🧪 Test Categories
 
-- **🔍 Search**: Semantic search, pagination, language preferences
-- **📚 CRUD**: Create, read, update, delete fatwas
-- **👤 Users**: User management and preferences
-- **🤖 AI**: Translation, embeddings, vector operations
-- **🏥 Health**: System health and status checks
+The collection includes organized folders for easy testing:
+
+- **🔍 Search Operations**
+  - Semantic search with pagination
+  - Language preference testing
+  - Search with user preferences
+  - Similar fatwas search
+
+- **📚 CRUD Operations**
+  - Create new fatwas
+  - Read fatwas by ID
+  - Update existing fatwas
+  - Delete fatwas
+  - Get all fatwas with pagination
+
+- **👤 User Management**
+  - Create user profiles
+  - Get user preferences
+  - Update user settings
+  - Language preference management
+
+- **🤖 AI Services**
+  - Translation (Arabic ↔ English)
+  - Vector embeddings generation
+  - Semantic similarity search
+  - AI service health checks
+
+- **🏥 System Health**
+  - API health status
+  - System status overview
+  - Service connectivity tests
+
+### 🚀 Quick Testing Guide
+
+1. **Start with Health Checks**:
+   - Run "Health Check" to verify API is running
+   - Run "System Status" for detailed service info
+
+2. **Test Search Functionality**:
+   - Try "Search Fatwas (Arabic)" with query "الصلاة"
+   - Try "Search Fatwas (English)" with query "prayer"
+   - Check pagination with different page sizes
+
+3. **Test User Features**:
+   - Create a test user with "Create User"
+   - Set language preferences
+   - Test search with user preferences
+
+4. **Test CRUD Operations**:
+   - Create a new fatwa
+   - Retrieve it by ID
+   - Update the fatwa
+   - Delete the fatwa
+
+### 🔧 Postman Tips
+
+- **Use Environment Variables**: All requests use `{{base_url}}` and `{{python_url}}`
+- **Authentication**: Most requests include Basic Auth headers automatically
+- **Test Scripts**: Some requests include automated tests
+- **Pre-request Scripts**: Some requests set up required data automatically
+- **Response Validation**: Check response status codes and data structure
 
 ### Quick Test Examples
 
@@ -204,7 +266,6 @@ ADMIN_PASSWORD=IftaaAdmin2024!
 ## 📈 Performance Metrics
 
 - **📊 Total Fatwas**: 4,666 from 340 categories
-- **🔍 Embeddings**: 4,016 loaded (86% success rate)
 - **⚡ Search Speed**: Sub-second response times
 - **🎯 Accuracy**: Semantic relevance scoring with fallback
 - **💾 Storage**: MongoDB (text) + Milvus (vectors)
@@ -321,7 +382,7 @@ IFTAA_Project/
 │   ├── data/                        # Fatwa data files
 │   └── scripts/                     # Database scripts
 ├── 🧪 Testing
-│   └── postman/                     # API test collection
+│   └── postman/                     # Postman API test collections
 └── 📚 Documentation
     └── README.md                    # This file
 ```
