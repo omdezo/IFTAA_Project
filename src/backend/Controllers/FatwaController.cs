@@ -7,7 +7,6 @@ namespace IFTAA_Project.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
     public class FatwaController : ControllerBase
     {
         private readonly FatwaService _fatwaService;
@@ -20,6 +19,7 @@ namespace IFTAA_Project.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> CreateFatwa(CreateFatwaDto createDto)
         {
             if (!ModelState.IsValid)
@@ -40,6 +40,7 @@ namespace IFTAA_Project.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> UpdateFatwa(int id, UpdateFatwaDto updateDto)
         {
             if (!ModelState.IsValid)
@@ -58,7 +59,7 @@ namespace IFTAA_Project.Controllers
         }
 
         [HttpGet("search")]
-        public async Task<IActionResult> SearchFatwas([FromQuery] string query, [FromQuery] string language = "", [FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? userId = null)
+        public async Task<IActionResult> SearchFatwas([FromQuery] string query, [FromQuery] string language = "", [FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? userId = null, [FromQuery] int? categoryId = null)
         {
             if (!string.IsNullOrEmpty(userId))
             {
@@ -68,7 +69,7 @@ namespace IFTAA_Project.Controllers
                     language = userPref.PreferredLanguage;
                 }
             }
-            var results = await _fatwaService.SearchFatwasAsync(query, language, page, pageSize);
+            var results = await _fatwaService.SearchFatwasAsync(query, language, page, pageSize, categoryId);
             return Ok(results);
         }
 
@@ -106,6 +107,7 @@ namespace IFTAA_Project.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteFatwa(int id)
         {
             var result = await _fatwaService.DeleteFatwaAsync(id);

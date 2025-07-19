@@ -13,6 +13,7 @@ namespace IFTAA_Project.DTOs
         [StringLength(10000, MinimumLength = 10)]
         public string? AnswerAr { get; set; }
         
+        [ValidCategory(ErrorMessage = "Category must be a valid normalized category")]
         public string? Category { get; set; }
         
         public List<string>? Tags { get; set; }

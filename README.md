@@ -1,442 +1,503 @@
-# 🌟 IFTAA - Islamic Fatwa Search System
+# 🌟 IFTAA - Islamic Fatwa Management System
 
-**Advanced hybrid search engine combining .NET Core API with Python AI services for Islamic fatwas**
+**Enterprise-grade API with hierarchical categories, JWT authentication, and semantic search**
 
-A production-ready system that provides semantic search capabilities for Islamic fatwas with bilingual support (Arabic & English), user management, and advanced AI-powered features.
+A production-ready RESTful API system that provides comprehensive fatwa management with hierarchical categories, JWT-based authentication, role-based authorization, and AI-powered semantic search capabilities.
 
-## 🎯 What You'll Get
+## ✨ Key Features
 
-- **🔍 Smart Search**: Find fatwas by meaning, not just keywords
-- **🌐 Bilingual Support**: Arabic & English with auto-translation
-- **👤 User Management**: Personalized search preferences
-- **🤖 AI-Powered**: Vector embeddings and semantic similarity
-- **📊 Complete CRUD**: Create, read, update, delete fatwas
-- **🔐 Secure**: Authentication and authorization system
+### 🔐 **Secure Authentication**
+- **JWT-based authentication** with role-based access control
+- **Admin/User roles** for fine-grained permissions  
+- **Secure token management** with configurable expiration
+- **OpenAPI/Swagger** documentation with auth integration
 
-## 🚀 Quick Start (First Time Setup)
+### 🏗️ **Hierarchical Categories**
+- **36 normalized categories** with parent-child relationships
+- **Tree-based navigation** for easy content organization
+- **Category-scoped search** to limit results by category
+- **Automatic validation** against predefined category structure
+
+### 🔍 **Advanced Search**
+- **Semantic search** using vector embeddings
+- **Category filtering** to search within specific categories
+- **Bilingual support** (Arabic & English)
+- **Pagination** with configurable page sizes
+- **Relevance scoring** for optimal result ranking
+
+### 📊 **Complete CRUD API**
+- **RESTful endpoints** following OpenAPI standards
+- **Strong typing** with comprehensive validation
+- **MongoDB indexes** for optimal performance
+- **Comprehensive error handling** and logging
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
 **Required Software:**
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows/Mac/Linux)
-- [Git](https://git-scm.com/) (to clone the repository)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- [Git](https://git-scm.com/)
 
 **System Requirements:**
 - 8GB RAM minimum (16GB recommended)
 - 10GB free disk space
 - Windows 10+, macOS 10.15+, or Linux
 
-### Step 1: Clone and Navigate
+### 1. Clone and Setup
 
 ```bash
-# Clone the repository
+# Clone repository
 git clone <your-repository-url>
 cd IFTAA_Project
 
-# Verify you're in the right directory
-ls
-# You should see: docker-compose.yml, README.md, IFTAA_Project/, etc.
+# Copy sample configuration
+cp config/config.sample.env config/config.env
+
+# Edit config.env with your production values
+# (See Configuration section below)
 ```
 
-### Step 2: Start the System
+### 2. Start Services
 
 ```bash
-# Start all services (this will take 2-3 minutes on first run)
+# Start all services (2-3 minutes on first run)
 docker-compose up -d
 
-# Check if all services are running
+# Verify services are running
 docker-compose ps
 ```
 
-**What this does:**
-- ✅ Starts MongoDB database
-- ✅ Starts Milvus vector database
-- ✅ Starts Python AI service
-- ✅ Starts .NET Core API
-- ✅ Loads initial data (4,666 fatwas)
-
-### Step 3: Verify Everything is Working
+### 3. Test API
 
 ```bash
-# Check system health
+# Health check
 curl http://localhost:8080/health
 
-# Check Python AI service
-curl http://localhost:5001/health
+# Login to get JWT token
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"IftaaAdmin2024!"}'
 
-# Check MongoDB UI (admin/admin)
-# Open: http://localhost:8081
+# Use token for authenticated requests
+curl -X GET "http://localhost:8080/api/fatwa/search?q=الصلاة" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
-### Step 4: Test the API
+## 🔗 API Endpoints
 
-**Option A: Using Postman (Recommended)**
-1. Download [Postman](https://www.postman.com/downloads/)
-2. Import the collection: `postman/IFTAA_Complete_APIs.postman_collection_last.json`
-3. Test the search endpoint
+### Authentication Endpoints
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `POST` | `/api/auth/login` | Get JWT token | ❌ |
+| `GET` | `/api/auth/me` | Current user info | ✅ |
+| `POST` | `/api/auth/validate` | Validate token | ✅ |
+| `GET` | `/api/auth/roles` | Available roles | ✅ Admin |
 
-**Option B: Using curl**
-```bash
-# Search for fatwas about prayer
-curl -X GET "http://localhost:8080/api/fatwa/search?query=الصلاة&page=1&pageSize=10" \
-  -H "Authorization: Basic YWRtaW46SWZ0YWFBZG1pbjIwMjQh"
+### Category Management
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/category` | Hierarchical tree | ❌ |
+| `GET` | `/api/category/{id}/fatwas` | Fatwas in category + descendants | ❌ |
+| `GET` | `/api/category/valid` | Valid category names | ❌ |
+| `GET` | `/api/category/top-level` | Root categories | ❌ |
+
+### Fatwa Operations
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/fatwa/{id}` | Single fatwa | ❌ |
+| `POST` | `/api/fatwa` | Create fatwa | ✅ Admin |
+| `PUT` | `/api/fatwa/{id}` | Update fatwa | ✅ Admin |
+| `DELETE` | `/api/fatwa/{id}` | Delete fatwa | ✅ Admin |
+| `GET` | `/api/fatwa/search` | Search with filters | ❌ |
+| `GET` | `/api/fatwa/{id}/similar` | Similar fatwas | ❌ |
+
+### Search Parameters
+
+```http
+GET /api/fatwa/search?q=احكام الوضوء&categoryId=2&page=1&pageSize=10&language=ar
 ```
 
-## 📊 System Architecture
+**Parameters:**
+- `q` (string) - Full-text search query
+- `categoryId` (optional) - Limit to category and descendants
+- `page` (int) - Page number (default: 1)
+- `pageSize` (int) - Results per page (default: 10)
+- `language` (string) - Preferred language: `ar` or `en`
+- `userId` (optional) - Apply user preferences
 
-```
-IFTAA System
-├── 🟦 .NET Core API (Port 8080)
-│   ├── RESTful endpoints
-│   ├── Authentication & authorization
-│   ├── User management
-│   └── Business logic
-├── 🐍 Python AI Service (Port 5001)
-│   ├── Semantic search (vector embeddings)
-│   ├── Auto-translation (Arabic ↔ English)
-│   └── AI model management
-├── 📊 MongoDB (Port 27017)
-│   ├── Fatwa storage
-│   ├── User data
-│   └── Text search capabilities
-├── 🔍 Milvus Vector DB (Port 19530)
-│   ├── Vector embeddings storage
-│   └── Semantic similarity search
-└── 🖥️ Mongo Express UI (Port 8081)
-    └── Database management interface
-```
+## 🔐 Authentication
 
-## 🔑 Key Features
-
-### 🔍 **Advanced Search**
-- **Semantic Search**: Find fatwas by meaning, not just keywords
-- **Bilingual**: Search in Arabic or English
-- **User Preferences**: Respects user language settings
-- **Pagination**: Configurable results per page
-- **Relevance Scoring**: Results ranked by similarity
-
-### 👤 **User Management**
-- **User Profiles**: Create and manage user accounts
-- **Language Preferences**: Set preferred language (Arabic/English)
-- **Search Settings**: Customize results per page
-- **Personalized Results**: Search results respect user preferences
-
-### 📚 **Complete CRUD Operations**
-- **Create**: Add new fatwas with auto-translation
-- **Read**: Get fatwas by ID, search, similar fatwas
-- **Update**: Edit fatwas with automatic re-embedding
-- **Delete**: Complete removal from database and vectors
-
-### 🤖 **AI-Powered Features**
-- **Vector Embeddings**: Automatic generation using multilingual models
-- **Auto-Translation**: Arabic ↔ English bidirectional translation
-- **Similar Fatwas**: Find related fatwas using semantic similarity
-- **Fallback Search**: MongoDB text search when vector search fails
-
-## 🧪 API Testing with Postman
-
-### 📥 Import Postman Collection
-
-1. **Download Postman**: [https://www.postman.com/downloads/](https://www.postman.com/downloads/)
-2. **Import Collection**: 
-   - Open Postman
-   - Click "Import" button
-   - Select `postman/IFTAA_Complete_APIs.postman_collection_last.json`
-   - Click "Import" to add the collection
-3. **Set Environment Variables**:
-   - Click "Environments" → "New"
-   - Name: `IFTAA Local`
-   - Add variables:
-     - `base_url`: `http://localhost:8080`
-     - `python_url`: `http://localhost:5001`
-   - Click "Save"
-   - Select the environment from the dropdown
-
-### 🧪 Test Categories
-
-The collection includes organized folders for easy testing:
-
-- **🔍 Search Operations**
-  - Semantic search with pagination
-  - Language preference testing
-  - Search with user preferences
-  - Similar fatwas search
-
-- **📚 CRUD Operations**
-  - Create new fatwas
-  - Read fatwas by ID
-  - Update existing fatwas
-  - Delete fatwas
-  - Get all fatwas with pagination
-
-- **👤 User Management**
-  - Create user profiles
-  - Get user preferences
-  - Update user settings
-  - Language preference management
-
-- **🤖 AI Services**
-  - Translation (Arabic ↔ English)
-  - Vector embeddings generation
-  - Semantic similarity search
-  - AI service health checks
-
-- **🏥 System Health**
-  - API health status
-  - System status overview
-  - Service connectivity tests
-
-### 🚀 Quick Testing Guide
-
-1. **Start with Health Checks**:
-   - Run "Health Check" to verify API is running
-   - Run "System Status" for detailed service info
-
-2. **Test Search Functionality**:
-   - Try "Search Fatwas (Arabic)" with query "الصلاة"
-   - Try "Search Fatwas (English)" with query "prayer"
-   - Check pagination with different page sizes
-
-3. **Test User Features**:
-   - Create a test user with "Create User"
-   - Set language preferences
-   - Test search with user preferences
-
-4. **Test CRUD Operations**:
-   - Create a new fatwa
-   - Retrieve it by ID
-   - Update the fatwa
-   - Delete the fatwa
-
-### 🔧 Postman Tips
-
-- **Use Environment Variables**: All requests use `{{base_url}}` and `{{python_url}}`
-- **Authentication**: Most requests include Basic Auth headers automatically
-- **Test Scripts**: Some requests include automated tests
-- **Pre-request Scripts**: Some requests set up required data automatically
-- **Response Validation**: Check response status codes and data structure
-
-### Quick Test Examples
+### Login & Get JWT Token
 
 ```bash
-# 1. Health Check
-curl http://localhost:8080/health
+# Login request
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "IftaaAdmin2024!"
+  }'
+```
 
-# 2. Search Fatwas (Arabic)
-curl -X GET "http://localhost:8080/api/fatwa/search?query=الصلاة&page=1&pageSize=10" \
-  -H "Authorization: Basic YWRtaW46SWZ0YWFBZG1pbjIwMjQh"
+**Response:**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "username": "admin",
+  "role": "admin",
+  "expiresAt": "2025-01-19T09:32:15Z"
+}
+```
 
-# 3. Search Fatwas (English)
-curl -X GET "http://localhost:8080/api/fatwa/search?query=prayer&page=1&pageSize=10" \
-  -H "Authorization: Basic YWRtaW46SWZ0YWFBZG1pbjIwMjQh"
+### Available Users
 
-# 4. Get All Fatwas
-curl -X GET "http://localhost:8080/api/fatwa?page=1&pageSize=20" \
-  -H "Authorization: Basic YWRtaW46SWZ0YWFBZG1pbjIwMjQh"
+| Username | Password | Role | Permissions |
+|----------|----------|------|-------------|
+| `admin` | `IftaaAdmin2024!` | Admin | Full access |
+| `scholar` | `IftaaScholar2024!` | Admin | Full access |
+| `user` | `IftaaUser2024!` | User | Read-only |
+| `guest` | `IftaaGuest2024!` | User | Read-only |
+
+### Using JWT Token
+
+```bash
+# Add Authorization header to requests
+curl -X GET "http://localhost:8080/api/fatwa" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+## 🏗️ Hierarchical Categories
+
+### Category Structure
+
+The system uses 36 normalized categories organized hierarchically:
+
+**Top-Level Categories (13):**
+1. **فتاوى العبادات** (Worship Fatwas)
+   - فتاوى الصلاة (Prayer)
+   - فتاوى الزكاة (Zakat) 
+   - فتاوى الصوم (Fasting)
+   - فتاوى الحج (Hajj)
+
+2. **فتاوى النكاح** (Marriage Fatwas)
+   - فتاوى الزواج (Marriage)
+   - فتاوى الفراق (Divorce)
+
+3. **فتاوى المعاملات** (Transactions)
+   - فتاوى البيوع (Sales)
+   - الربا (Interest/Usury)
+   - الديون (Debts)
+   - الشركات (Companies)
+   - أوجه من المعاملات (Transaction Aspects)
+
+*...and more*
+
+### Category API Examples
+
+```bash
+# Get category tree
+curl http://localhost:8080/api/category
+
+# Get all fatwas in "Prayer" category and subcategories
+curl http://localhost:8080/api/category/2/fatwas
+
+# Search within specific category
+curl "http://localhost:8080/api/fatwa/search?q=الوضوء&categoryId=2"
 ```
 
 ## 🔧 Configuration
 
-### Environment Variables (`config.env`)
+### Environment Setup
 
+1. **Copy sample configuration:**
 ```bash
+cp config/config.sample.env config/config.env
+```
+
+2. **Edit config.env with your values:**
+```env
 # MongoDB Configuration
-MONGODB_URI=mongodb://admin:IftaaDB2024!@localhost:27017/iftaa_db?authSource=admin
-MONGODB_DATABASE=iftaa_db
+MONGODB_URI=mongodb://admin:YOUR_PASSWORD@localhost:27017/iftaa_db?authSource=admin
 
-# Milvus Configuration
-MILVUS_HOST=127.0.0.1
-MILVUS_PORT=19530
-
-# AI Models
-EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-mpnet-base-v2
-TRANSLATION_MODEL_AR_EN=Helsinki-NLP/opus-mt-ar-en
+# JWT Configuration
+JWT_SECRET=YOUR_VERY_LONG_JWT_SECRET_KEY_HERE_AT_LEAST_32_CHARACTERS
+JWT_ISSUER=IFTAA_API_PRODUCTION
+JWT_EXPIRATION_MINUTES=60
 
 # Authentication
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=IftaaAdmin2024!
+ADMIN_PASSWORD=YOUR_SECURE_PASSWORD_HERE
 ```
 
-### Default Credentials
+3. **For .NET Production (optional):**
+```bash
+cp src/backend/appsettings.Production.sample.json src/backend/appsettings.Production.json
+# Edit with production values
+```
 
-- **MongoDB**: `admin:IftaaDB2024!`
-- **Mongo Express UI**: `admin:admin`
-- **API Authentication**: `admin:IftaaAdmin2024!`
+### Security Best Practices
 
-## 📈 Performance Metrics
+- ✅ **Never commit** `config.env` to version control
+- ✅ **Use strong passwords** (minimum 16 characters)
+- ✅ **Generate unique JWT secrets** for each environment
+- ✅ **Rotate credentials** regularly
+- ✅ **Use environment variables** in production
 
-- **📊 Total Fatwas**: 4,666 from 340 categories
+## 📊 API Testing
+
+### With Postman
+
+1. **Import Collection:**
+   - Download [Postman](https://www.postman.com/downloads/)
+   - Import: `tools/postman/IFTAA_Complete_APIs.postman_collection.json`
+
+2. **Set Environment:**
+   - Create environment: `IFTAA Local`
+   - Set `base_url`: `http://localhost:8080`
+   - Set `python_url`: `http://localhost:5001`
+
+3. **Authentication Flow:**
+   - Run "Login" request to get JWT token
+   - Token automatically used in subsequent requests
+
+### Example API Calls
+
+```bash
+# 1. Login and get token
+TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"IftaaAdmin2024!"}' \
+  | jq -r '.token')
+
+# 2. Get category tree  
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8080/api/category
+
+# 3. Search with category filter
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8080/api/fatwa/search?q=الصلاة&categoryId=2&page=1&pageSize=5"
+
+# 4. Create new fatwa (admin only)
+curl -X POST http://localhost:8080/api/fatwa \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fatwaId": 9999,
+    "titleAr": "حكم جديد",
+    "questionAr": "ما الحكم في هذه المسألة؟",
+    "answerAr": "الجواب كذا وكذا",
+    "category": "فتاوى الصلاة",
+    "tags": ["فقه", "عبادة"]
+  }'
+
+# 5. Get fatwas in category
+curl http://localhost:8080/api/category/1/fatwas?page=1&pageSize=20
+```
+
+## 🏛️ System Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Client Applications                  │
+│              (Web, Mobile, Postman)                     │
+└──────────────────┬──────────────────────────────────────┘
+                   │ HTTP/REST + JWT
+┌──────────────────▼──────────────────────────────────────┐
+│              .NET Core API (Port 8080)                  │
+│  ┌─────────────┬─────────────┬─────────────────────────┐ │
+│  │Controllers  │ Services    │ Authentication          │ │
+│  │- Auth       │- Fatwa      │- JWT Tokens             │ │
+│  │- Category   │- Category   │- Role-based Auth        │ │
+│  │- Fatwa      │- User       │- Admin/User Roles       │ │
+│  │- System     │- Database   │                         │ │
+│  └─────────────┴─────────────┴─────────────────────────┘ │
+└─────────────┬───────────────┬──────────────────────────────┘
+              │               │
+              ▼               ▼
+    ┌─────────────────┐  ┌─────────────────┐
+    │ MongoDB         │  │ Python AI       │
+    │ (Port 27017)    │  │ (Port 5001)     │
+    │                 │  │                 │
+    │ - Fatwas        │  │ - Semantic      │
+    │ - Categories    │  │   Search        │
+    │ - Users         │  │ - Embeddings    │
+    │ - Indexes       │  │ - Translation   │
+    └─────────────────┘  └─────────┬───────┘
+                                   │
+                                   ▼
+                          ┌─────────────────┐
+                          │ Milvus Vector   │
+                          │ (Port 19530)    │
+                          │                 │
+                          │ - Vector Store  │
+                          │ - Similarity    │
+                          │ - Search Index  │
+                          └─────────────────┘
+```
+
+## ⚡ Performance Features
+
+### Database Optimization
+- ✅ **MongoDB Indexes** on key fields (`fatwa_id`, `category`, `created_at`)
+- ✅ **Compound indexes** for complex queries
+- ✅ **Text search indexes** for full-text search
+- ✅ **Category hierarchy indexes** for tree operations
+
+### Search Performance
+- ✅ **Vector database** (Milvus) for semantic search
+- ✅ **Fallback text search** when vector search unavailable
+- ✅ **Result caching** and relevance scoring
+- ✅ **Optimized pagination** with configurable page sizes
+
+### Security & Validation
+- ✅ **Strong typing** with DTO validation
+- ✅ **Category validation** against normalized set
+- ✅ **SQL injection prevention** with parameterized queries
+- ✅ **JWT token validation** and secure headers
+
+## 📈 Data & Metrics
+
+- **📊 Total Fatwas**: 4,666 normalized and categorized
+- **🏗️ Categories**: 36 hierarchical categories (13 top-level)
 - **⚡ Search Speed**: Sub-second response times
-- **🎯 Accuracy**: Semantic relevance scoring with fallback
-- **💾 Storage**: MongoDB (text) + Milvus (vectors)
 - **🌐 Languages**: Arabic & English with auto-translation
+- **🔒 Security**: JWT authentication with role-based access
 
 ## 🚨 Troubleshooting
 
-### Common Issues & Solutions
+### Common Issues
 
-#### 🔴 **"Docker not found"**
+#### 🔴 Authentication Issues
 ```bash
-# Install Docker Desktop
-# Windows/Mac: Download from https://www.docker.com/products/docker-desktop/
-# Linux: Follow https://docs.docker.com/engine/install/
+# Check JWT token format
+curl -X POST http://localhost:8080/api/auth/validate \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Get new token
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"IftaaAdmin2024!"}'
 ```
 
-#### 🔴 **"Port already in use"**
+#### 🔴 Category Validation Errors
 ```bash
-# Stop existing containers
-docker-compose down
+# Get valid categories
+curl http://localhost:8080/api/category/valid
 
-# Check what's using the ports
-netstat -ano | findstr :8080
-netstat -ano | findstr :5001
-
-# Kill the process or change ports in docker-compose.yml
+# Check category structure
+curl http://localhost:8080/api/category
 ```
 
-#### 🔴 **"Services not starting"**
+#### 🔴 Search Not Working
 ```bash
-# Check service logs
-docker-compose logs dotnet-api
-docker-compose logs python-ai-service
-docker-compose logs mongodb
-
-# Restart services
-docker-compose restart
-```
-
-#### 🔴 **"No search results found"**
-```bash
-# Check if data is loaded
+# Check AI service
 curl http://localhost:5001/health
 
-# Check MongoDB data
-# Open: http://localhost:8081 (admin/admin)
-# Navigate to: iftaa_db > fatwas
+# Check category filter
+curl "http://localhost:8080/api/fatwa/search?q=test&categoryId=1"
 
-# Reload data if needed
-docker-compose restart data-seeder
+# Check without category filter
+curl "http://localhost:8080/api/fatwa/search?q=test"
 ```
 
-#### 🔴 **"Authentication failed"**
-```bash
-# Use correct credentials
-Authorization: Basic YWRtaW46SWZ0YWFBZG1pbjIwMjQh
-
-# Or encode manually: admin:IftaaAdmin2024!
-echo -n "admin:IftaaAdmin2024!" | base64
-```
-
-#### 🔴 **"Slow performance"**
-```bash
-# Check system resources
-docker stats
-
-# Increase Docker resources:
-# Docker Desktop > Settings > Resources > Memory: 8GB+, CPU: 4+
-```
-
-### Service Status Commands
-
+#### 🔴 Docker Issues
 ```bash
 # Check all services
 docker-compose ps
 
-# Check specific service logs
-docker-compose logs -f dotnet-api
-docker-compose logs -f python-ai-service
-docker-compose logs -f mongodb
-
-# Restart specific service
-docker-compose restart dotnet-api
-
-# View real-time logs
-docker-compose logs -f
-```
-
-## 🛠️ Development
-
-### Project Structure
-
-```
-IFTAA_Project/
-├── 🟦 .NET Core Application
-│   ├── IFTAA_Project/
-│   │   ├── Controllers/          # API endpoints
-│   │   ├── Services/            # Business logic
-│   │   ├── Models/              # Data models
-│   │   ├── DTOs/                # Data transfer objects
-│   │   ├── Data/                # Database context
-│   │   └── Program.cs           # Application startup
-│   └── Dockerfile               # .NET container
-├── 🐍 Python AI Service
-│   ├── semantic_search_service.py    # Main AI service
-│   ├── smart_data_loader.py         # Data management
-│   ├── requirements.txt             # Python dependencies
-│   └── Dockerfile.python            # Python container
-├── 🐋 Docker Configuration
-│   ├── docker-compose.yml           # Service orchestration
-│   ├── config.env                   # Environment variables
-│   └── volumes/                     # Persistent data
-├── 📊 Data Files
-│   ├── data/                        # Fatwa data files
-│   └── scripts/                     # Database scripts
-├── 🧪 Testing
-│   └── postman/                     # Postman API test collections
-└── 📚 Documentation
-    └── README.md                    # This file
-```
-
-### Adding New Features
-
-1. **Backend Changes**: Edit files in `IFTAA_Project/`
-2. **AI Service Changes**: Edit `semantic_search_service.py`
-3. **Configuration**: Update `config.env`
-4. **Rebuild**: `docker-compose build --no-cache`
-5. **Restart**: `docker-compose up -d`
-
-## 🎯 Next Steps
-
-1. **🚀 Start the system**: `docker-compose up -d`
-2. **🧪 Test APIs**: Import Postman collection
-3. **🔍 Try searching**: Use the search endpoints
-4. **👤 Create users**: Set up user preferences
-5. **📊 Monitor**: Check health endpoints
-6. **🔧 Customize**: Modify search parameters
-
-## 📞 Support
-
-### Getting Help
-
-1. **Check logs**: `docker-compose logs`
-2. **Verify setup**: Follow the Quick Start guide
-3. **Test endpoints**: Use the provided Postman collection
-4. **Check health**: `curl http://localhost:8080/health`
-
-### Useful Commands
-
-```bash
-# Start system
-docker-compose up -d
-
-# Stop system
-docker-compose down
-
 # View logs
-docker-compose logs -f
+docker-compose logs dotnet-api
+docker-compose logs python-ai-service
 
 # Restart services
 docker-compose restart
-
-# Check status
-docker-compose ps
-
-# Clean up (removes all data)
-docker-compose down -v
 ```
+
+### Service Health Checks
+
+```bash
+# API health
+curl http://localhost:8080/health
+
+# System status (admin only)
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8080/api/system/mongodb-status
+
+# Python AI service
+curl http://localhost:5001/health
+```
+
+## 📖 OpenAPI Documentation
+
+Access comprehensive API documentation:
+
+**Swagger UI**: `http://localhost:8080/swagger`
+
+Features:
+- ✅ **Interactive testing** of all endpoints
+- ✅ **JWT authentication** integration  
+- ✅ **Request/response schemas** with examples
+- ✅ **Role-based endpoint** documentation
+- ✅ **Error response** documentation
+
+## 🔄 Development Workflow
+
+### Making Changes
+
+1. **Edit source code** in `src/backend/` or `src/ai-service/`
+2. **Update configuration** if needed
+3. **Rebuild containers:**
+   ```bash
+   docker-compose build --no-cache
+   docker-compose up -d
+   ```
+4. **Test changes** using Postman or curl
+5. **Check logs** for any issues
+
+### Adding New Categories
+
+Categories are validated against a predefined set. To add new categories:
+
+1. **Update** `CategoryService.cs` with new categories
+2. **Run migration** if needed
+3. **Update validation** in DTOs
+4. **Test** with API calls
+
+## 🛡️ Security Considerations
+
+### Production Deployment
+
+- ✅ **Change default passwords** in `config.env`
+- ✅ **Generate strong JWT secrets** (32+ characters)
+- ✅ **Use HTTPS** in production
+- ✅ **Configure firewall** rules
+- ✅ **Regular security updates**
+- ✅ **Monitor authentication** logs
+- ✅ **Implement rate limiting** if needed
+
+### Environment Variables
+
+Never commit these files:
+- `config/config.env`
+- `src/backend/appsettings.Production.json`
+- Any file with passwords or secrets
+
+Use sample files as templates and configure for your environment.
 
 ---
 
-**🎉 You now have a complete, production-ready Islamic search system!**
+## 🎉 You're Ready!
 
-The system combines the robustness of .NET Core with the AI capabilities of Python, providing a comprehensive solution for Islamic fatwa search with advanced semantic capabilities, user management, and bilingual support. 
+Your IFTAA system now provides:
+
+- ✅ **Enterprise-grade API** with JWT authentication
+- ✅ **Hierarchical category management** 
+- ✅ **Advanced search capabilities** with filtering
+- ✅ **Role-based security** (Admin/User)
+- ✅ **Comprehensive documentation** (OpenAPI/Swagger)
+- ✅ **Production-ready deployment** with Docker
+- ✅ **Performance optimization** with database indexes
+- ✅ **Bilingual support** (Arabic/English)
+
+**Start exploring the API at: `http://localhost:8080/swagger`** 🚀

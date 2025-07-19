@@ -2,16 +2,27 @@
 [Oo]bj/
 [Bb]in/
 
-# Milvus data
+# Vector Database & Storage
 volumes/
+data/vectors/
+data/backups/
+*.db
+*.sqlite
+*.sqlite3
 
-# Cleaned data
+# Data files (keep samples only)
+data/json/fatwas.json
+data/json/fatwas_multilingual.json
+data/json/fatwas_multilingual_seamless.json  
+data/json/fatwas_enriched_v2.json
+
+# Keep normalized categories (this is safe to share)
+# data/json/categories_normalized.json
+
+# Large datasets
 fatwas.json
-
-# Enriched data cache
-fatwas_multilingual.json
-fatwas_multilingual_seamless.json
-fatwas_enriched_v2.json
+fatwas_*.json
+*_fatwas.json
 
 # Logs
 logs/
@@ -19,14 +30,39 @@ logs/
 app.log
 seed_milvus.log
 
-# Environment files
+# Environment files (PRODUCTION SENSITIVE)
 .env
 .env.local
+.env.production
+*.env
+config.env
+appsettings.Production.json
+
+# Database credentials and connections
+*connectionstring*
+*connection-string*
+*dbpass*
+*dbpassword*
+
+# Authentication credentials
+*secret*
+*token*
+*jwt*
+*auth*
+*password*
+*credentials*
 
 # Production deployment files
 deployment/production/.env.prod
 deployment/production/configs/ssl/
 deployment/production/status_report_*.txt
+
+# Configuration files with sensitive data
+config/config.env
+config/*.env
+config/production.*
+appsettings.Production.json
+src/backend/appsettings.Production.json
 
 # Python cache
 __pycache__/

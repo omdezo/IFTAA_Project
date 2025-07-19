@@ -7,7 +7,7 @@ namespace IFTAA_Project.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    [Authorize(Roles = "admin")]
     public class SystemController : ControllerBase
     {
         private readonly IMongoDatabase _database;

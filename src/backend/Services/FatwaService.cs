@@ -15,14 +15,16 @@ namespace IFTAA_Project.Services
         private readonly HttpClient _httpClient;
         private readonly ILogger<FatwaService> _logger;
         private readonly string _pythonServiceUrl;
+        private readonly CategoryService _categoryService;
 
         public FatwaService(IftaaDbContext dbContext, HttpClient httpClient, 
-                           ILogger<FatwaService> logger, IConfiguration configuration)
+                           ILogger<FatwaService> logger, IConfiguration configuration, CategoryService categoryService)
         {
             _dbContext = dbContext;
             _httpClient = httpClient;
             _logger = logger;
             _pythonServiceUrl = configuration["PythonServiceUrl"] ?? "http://python-ai-service:5001";
+            _categoryService = categoryService;
         }
 
         public async Task<(Fatwa? fatwa, string? error)> CreateFatwaAsync(CreateFatwaDto createDto)
@@ -242,19 +244,37 @@ namespace IFTAA_Project.Services
             }
         }
 
-        public async Task<PaginatedSearchResponseDto> SearchFatwasAsync(string query, string language = "", int page = 1, int pageSize = 10)
+        public async Task<PaginatedSearchResponseDto> SearchFatwasAsync(string query, string language = "", int page = 1, int pageSize = 10, int? categoryId = null)
         {
             try
             {
                 // Default to Arabic if language not specified
                 language = string.IsNullOrEmpty(language) ? "ar" : language;
 
-                var response = await _httpClient.GetAsync($"{_pythonServiceUrl}/api/search?query={Uri.EscapeDataString(query)}&lang={language}&page={page}&page_size={pageSize}");
+                // Build search URL with optional category filtering
+                var searchUrl = $"{_pythonServiceUrl}/api/search?query={Uri.EscapeDataString(query)}&lang={language}&page={page}&page_size={pageSize}";
+                
+                // If categoryId is provided, get fatwas from that category and descendants first
+                List<int>? categoryFatwaIds = null;
+                if (categoryId.HasValue)
+                {
+                    var categoryResult = await _categoryService.GetFatwasInCategoryAsync(categoryId.Value, 1, int.MaxValue);
+                    if (categoryResult is IDictionary<string, object> dict && dict.ContainsKey("fatwas"))
+                    {
+                        var fatwas = dict["fatwas"] as IEnumerable<object>;
+                        if (fatwas != null)
+                        {
+                            categoryFatwaIds = fatwas.Cast<dynamic>().Select(f => (int)f.fatwaId).ToList();
+                        }
+                    }
+                }
+
+                var response = await _httpClient.GetAsync(searchUrl);
                 
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogError($"Failed to search fatwas: {response.StatusCode}");
-                    return await FallbackTextSearchAsync(query, language, page, pageSize);
+                    return await FallbackTextSearchAsync(query, language, page, pageSize, categoryFatwaIds);
                 }
 
                 var jsonString = await response.Content.ReadAsStringAsync();
@@ -271,8 +291,8 @@ namespace IFTAA_Project.Services
                     };
                 }
 
-                // Convert Python results to our DTO format
-                var searchResults = pythonResult.results.Select(r => new SearchResultDto
+                // Convert Python results to our DTO format and filter by category if needed
+                var allResults = pythonResult.results.Select(r => new SearchResultDto
                 {
                     Fatwa = new FatwaResponseDto
                     {
@@ -289,6 +309,11 @@ namespace IFTAA_Project.Services
                     RelevanceScore = Math.Max(0.0, Math.Min(1.0, r.relevanceScore)) // Use actual relevance score from Python service
                 }).ToList();
 
+                // Apply category filtering if specified
+                var searchResults = categoryFatwaIds != null 
+                    ? allResults.Where(r => categoryFatwaIds.Contains(r.Fatwa.FatwaId)).ToList()
+                    : allResults;
+
                 // Sort by relevance score (descending) to ensure best results are first
                 searchResults = searchResults.OrderByDescending(r => r.RelevanceScore).ToList();
 
@@ -303,7 +328,7 @@ namespace IFTAA_Project.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error searching fatwas");
-                return await FallbackTextSearchAsync(query, language, page, pageSize);
+                return await FallbackTextSearchAsync(query, language, page, pageSize, categoryFatwaIds);
             }
         }
 
@@ -412,16 +437,25 @@ namespace IFTAA_Project.Services
             }
         }
 
-        private async Task<PaginatedSearchResponseDto> FallbackTextSearchAsync(string query, string language, int page, int pageSize)
+        private async Task<PaginatedSearchResponseDto> FallbackTextSearchAsync(string query, string language, int page, int pageSize, List<int>? categoryFatwaIds = null)
         {
             try
             {
                 _logger.LogInformation($"Using fallback text search for query: {query}");
                 
-                var filter = Builders<Fatwa>.Filter.And(
+                var filterConditions = new List<FilterDefinition<Fatwa>>
+                {
                     Builders<Fatwa>.Filter.Text(query),
                     Builders<Fatwa>.Filter.Eq(f => f.IsActive, true)
-                );
+                };
+
+                // Add category filtering if specified
+                if (categoryFatwaIds != null && categoryFatwaIds.Any())
+                {
+                    filterConditions.Add(Builders<Fatwa>.Filter.In(f => f.FatwaId, categoryFatwaIds));
+                }
+
+                var filter = Builders<Fatwa>.Filter.And(filterConditions);
                 
                 var totalCount = await _dbContext.Fatwas.CountDocumentsAsync(filter);
                 
