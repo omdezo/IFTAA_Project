@@ -1,0 +1,183 @@
+version: '3.8'
+
+services:
+  # --- Databases ---
+  mongodb:
+    image: mongo:6.0
+    container_name: iftaa-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: IftaaDB2024!
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - iftaa-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  mongo-express:
+    image: mongo-express
+    container_name: iftaa-mongo-express
+    depends_on:
+      - mongodb
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: IftaaDB2024!
+      ME_CONFIG_MONGODB_URL: mongodb://admin:IftaaDB2024!@mongodb:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin
+    ports:
+      - "8081:8081"
+    networks:
+      - iftaa-network
+
+  etcd:
+    container_name: milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.5
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - etcd_data:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - iftaa-network
+
+  minio:
+    container_name: milvus-minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    ports:
+      - "9001:9001"
+      - "9000:9000"
+    volumes:
+      - minio_data:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - iftaa-network
+
+  milvus:
+    container_name: milvus-standalone
+    image: milvusdb/milvus:v2.4.15
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+    - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    volumes:
+      - milvus_data:/var/lib/milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      - "etcd"
+      - "minio"
+    networks:
+      - iftaa-network
+
+  # --- Backend Services ---
+  python-ai-service:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.python
+    container_name: iftaa-python-service
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      milvus:
+        condition: service_healthy
+      data-seeder:
+        condition: service_completed_successfully
+    environment:
+      - MILVUS_HOST=milvus
+      - MONGODB_URI=mongodb://admin:IftaaDB2024!@mongodb:27017/iftaa_db?authSource=admin
+      - USE_MILVUS_LITE=false
+      - FATWA_COLLECTION_AR=fatwas_ar_v2
+      - FATWA_COLLECTION_EN=fatwas_en_v2
+      - AUTO_INITIALIZE_DATA=true
+    ports:
+      - "5001:5001"
+    volumes:
+      - ../data:/app/data
+    networks:
+      - iftaa-network
+      
+  # --- Automatic Data Seeding Service ---
+  data-seeder:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.python
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      milvus:
+        condition: service_healthy
+    environment:
+      - MILVUS_HOST=milvus
+      - MONGODB_URI=mongodb://admin:IftaaDB2024!@mongodb:27017/iftaa_db?authSource=admin
+      - USE_MILVUS_LITE=false
+    command: ["python", "smart_data_loader.py", "--docker", "--force"]
+    restart: "no"
+    volumes:
+      - ../data:/app/data
+    networks:
+      - iftaa-network
+
+  dotnet-api:
+    build:
+      context: ..
+      dockerfile: src/backend/Dockerfile
+    container_name: iftaa-dotnet-api
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      milvus:
+        condition: service_healthy
+      python-ai-service:
+        condition: service_started
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - MONGODB_URI=mongodb://admin:IftaaDB2024!@mongodb:27017/iftaa_db?authSource=admin
+      - MILVUS_HOST=milvus
+      - MILVUS_PORT=19530
+      - PYTHON_AI_SERVICE_URL=http://python-ai-service:5001
+    ports:
+      - "8080:8080"
+    networks:
+      - iftaa-network
+
+volumes:
+  mongo_data:
+  milvus_data:
+  etcd_data:
+  minio_data:
+
+networks:
+  iftaa-network:
+    name: iftaa-network 

@@ -1,0 +1,62 @@
+# =============================================================================
+# IFTAA Production .NET Backend Dockerfile
+# Optimized for production deployment with security and performance
+# =============================================================================
+
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
+
+# Set working directory
+WORKDIR /src
+
+# Copy project file and restore dependencies
+COPY src/backend/IFTAA_Project.csproj ./backend/
+RUN dotnet restore ./backend/IFTAA_Project.csproj
+
+# Copy source code
+COPY src/backend/. ./backend/
+
+# Build and publish the application
+WORKDIR /src/backend
+RUN dotnet publish -c Release -o /app/publish \
+    --no-restore \
+    --verbosity minimal
+
+# =============================================================================
+# Production runtime stage
+# =============================================================================
+
+# Use ASP.NET Core runtime image
+FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS runtime
+
+# Set environment variables for production
+ENV ASPNETCORE_ENVIRONMENT=Production \
+    DOTNET_RUNNING_IN_CONTAINER=true \
+    ASPNETCORE_URLS=http://+:8080 \
+    ASPNETCORE_HTTP_PORTS=8080
+
+# Create non-root user for security
+RUN groupadd -r iftaa && useradd -r -g iftaa iftaa
+
+# Set working directory
+WORKDIR /app
+
+# Copy published application
+COPY --from=build /app/publish .
+
+# Create logs directory
+RUN mkdir -p /app/logs && \
+    chown -R iftaa:iftaa /app
+
+# Switch to non-root user
+USER iftaa
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Expose port
+EXPOSE 8080
+
+# Production startup command
+ENTRYPOINT ["dotnet", "IFTAA_Project.dll"]

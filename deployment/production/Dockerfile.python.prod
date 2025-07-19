@@ -1,0 +1,82 @@
+# =============================================================================
+# IFTAA Production Python AI Service Dockerfile
+# Optimized for production deployment with security and performance
+# =============================================================================
+
+# Use Python slim image for smaller size
+FROM python:3.11-slim as base
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONIOENCODING=utf-8 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_DEFAULT_TIMEOUT=100
+
+# Create non-root user for security
+RUN groupadd -r iftaa && useradd -r -g iftaa iftaa
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    curl \
+    gcc \
+    g++ \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Set work directory
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY src/ai-service/requirements.txt /app/requirements.txt
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# =============================================================================
+# Production optimizations
+# =============================================================================
+
+# Pre-cache AI models (reduces startup time)
+RUN python -c "from transformers import MarianMTModel, MarianTokenizer; \
+    MarianTokenizer.from_pretrained('Helsinki-NLP/opus-mt-ar-en'); \
+    MarianMTModel.from_pretrained('Helsinki-NLP/opus-mt-ar-en')" && \
+    python -c "from sentence_transformers import SentenceTransformer; \
+    SentenceTransformer('sentence-transformers/paraphrase-multilingual-mpnet-base-v2')"
+
+# Copy application code
+COPY src/ai-service/semantic_search_service.py /app/
+COPY src/ai-service/smart_data_loader.py /app/
+COPY config/config.env /app/
+
+# Create data and log directories
+RUN mkdir -p /app/data /app/logs && \
+    chown -R iftaa:iftaa /app
+
+# Copy data files
+COPY data/ /app/data/
+
+# Switch to non-root user
+USER iftaa
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:5001/health || exit 1
+
+# Expose port
+EXPOSE 5001
+
+# Production startup command with Gunicorn
+CMD ["python", "-m", "gunicorn", "--bind", "0.0.0.0:5001", \
+     "--workers", "4", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--worker-timeout", "300", \
+     "--max-requests", "1000", \
+     "--max-requests-jitter", "100", \
+     "--log-level", "info", \
+     "--access-logfile", "/app/logs/access.log", \
+     "--error-logfile", "/app/logs/error.log", \
+     "semantic_search_service:app"]

@@ -1,0 +1,264 @@
+# =============================================================================
+# IFTAA Production Docker Compose Configuration
+# Optimized for production deployment with security, performance, and monitoring
+# =============================================================================
+
+services:
+  # =============================================================================
+  # Database Services
+  # =============================================================================
+  
+  mongodb:
+    image: mongo:6.0
+    container_name: iftaa-mongodb-prod
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongo_data_prod:/data/db
+      - ./configs/mongod.conf:/etc/mongod.conf:ro
+    networks:
+      - iftaa-network-prod
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Vector Database Infrastructure
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    container_name: iftaa-etcd-prod
+    restart: unless-stopped
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: 1000
+      ETCD_QUOTA_BACKEND_BYTES: 4294967296
+      ETCD_SNAPSHOT_COUNT: 50000
+    volumes:
+      - etcd_data_prod:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    networks:
+      - iftaa-network-prod
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  minio:
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    container_name: iftaa-minio-prod
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data_prod:/data
+    command: minio server /data --console-address ":9001"
+    networks:
+      - iftaa-network-prod
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  milvus:
+    image: milvusdb/milvus:v2.4.15
+    container_name: iftaa-milvus-prod
+    restart: unless-stopped
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    volumes:
+      - milvus_data_prod:/var/lib/milvus
+    ports:
+      - "${MILVUS_PORT:-19530}:19530"
+      - "${MILVUS_HTTP_PORT:-9091}:9091"
+    depends_on:
+      etcd:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - iftaa-network-prod
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # =============================================================================
+  # Application Services
+  # =============================================================================
+
+  # Data initialization service
+  data-initializer:
+    build:
+      context: ../..
+      dockerfile: deployment/production/Dockerfile.python.prod
+    container_name: iftaa-data-init-prod
+    environment:
+      MILVUS_HOST: milvus
+      MONGODB_URI: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongodb:27017/iftaa_db?authSource=admin
+      USE_MILVUS_LITE: "false"
+    command: ["python", "smart_data_loader.py", "--docker"]
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      milvus:
+        condition: service_healthy
+    volumes:
+      - ../../data:/app/data:ro
+      - data_init_logs:/app/logs
+    networks:
+      - iftaa-network-prod
+    restart: "no"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Python AI Service
+  python-ai-service:
+    build:
+      context: ../..
+      dockerfile: deployment/production/Dockerfile.python.prod
+    container_name: iftaa-ai-service-prod
+    restart: unless-stopped
+    environment:
+      MILVUS_HOST: milvus
+      MONGODB_URI: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongodb:27017/iftaa_db?authSource=admin
+      USE_MILVUS_LITE: "false"
+      FATWA_COLLECTION_AR: fatwas_ar_v2
+      FATWA_COLLECTION_EN: fatwas_en_v2
+      GUNICORN_WORKERS: ${AI_SERVICE_WORKERS:-4}
+      GUNICORN_TIMEOUT: ${AI_SERVICE_TIMEOUT:-300}
+    ports:
+      - "${AI_SERVICE_PORT:-5001}:5001"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      milvus:
+        condition: service_healthy
+      data-initializer:
+        condition: service_completed_successfully
+    volumes:
+      - ../../data:/app/data:ro
+      - ai_service_logs:/app/logs
+    networks:
+      - iftaa-network-prod
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # .NET Backend API
+  backend-api:
+    build:
+      context: ../..
+      dockerfile: deployment/production/Dockerfile.backend.prod
+    container_name: iftaa-backend-prod
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      MONGODB_URI: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongodb:27017/iftaa_db?authSource=admin
+      MILVUS_HOST: milvus
+      MILVUS_PORT: 19530
+      PYTHON_AI_SERVICE_URL: http://python-ai-service:5001
+      ADMIN_USERNAME: ${API_ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${API_ADMIN_PASSWORD}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      milvus:
+        condition: service_healthy
+      python-ai-service:
+        condition: service_healthy
+    volumes:
+      - backend_logs:/app/logs
+    networks:
+      - iftaa-network-prod
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+
+# =============================================================================
+# Volumes
+# =============================================================================
+
+volumes:
+  mongo_data_prod:
+    driver: local
+  milvus_data_prod:
+    driver: local
+  etcd_data_prod:
+    driver: local
+  minio_data_prod:
+    driver: local
+  ai_service_logs:
+    driver: local
+  backend_logs:
+    driver: local
+  data_init_logs:
+    driver: local
+
+# =============================================================================
+# Networks
+# =============================================================================
+
+networks:
+  iftaa-network-prod:
+    driver: bridge
+    name: iftaa-network-prod

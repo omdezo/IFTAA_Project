@@ -23,6 +23,11 @@ seed_milvus.log
 .env
 .env.local
 
+# Production deployment files
+deployment/production/.env.prod
+deployment/production/configs/ssl/
+deployment/production/status_report_*.txt
+
 # Python cache
 __pycache__/
 *.py[cod]
