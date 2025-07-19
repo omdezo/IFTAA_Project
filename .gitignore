@@ -201,6 +201,9 @@ volumes/
 .vscode/
 .idea/
 
+# Claude AI assistant files
+.claude/
+
 # Test results and temporary files
 tests/test_results.json
 tests/test_results.log

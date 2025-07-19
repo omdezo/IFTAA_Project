@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Simple System Test for IFTAA Project
+IFTAA Project Structure Test
+Tests basic project structure and configuration files
 """
 
 import os
@@ -37,10 +38,13 @@ def test_structure():
     # Required files
     required_files = [
         "deployment/docker-compose.yml",
-        "config/config.env",
+        "config/config.sample.env",
         "src/backend/Program.cs",
         "src/ai-service/semantic_search_service.py",
-        "README.md"
+        "src/backend/IFTAA_Project.csproj",
+        "src/ai-service/requirements.txt",
+        "README.md",
+        ".gitignore"
     ]
     
     missing = []
@@ -67,20 +71,20 @@ def test_config_files():
         print("FAIL: docker-compose.yml not found")
         return False
     
-    # Check config.env
-    config_file = root_dir / "config/config.env"
-    if not config_file.exists():
-        print("FAIL: config.env not found")
+    # Check config files (sample should exist, actual may not)
+    config_sample = root_dir / "config/config.sample.env"
+    if not config_sample.exists():
+        print("FAIL: config.sample.env not found")
         return False
     
-    # Check if config.env has required settings
-    with open(config_file, 'r') as f:
+    # Check if sample config has required settings
+    with open(config_sample, 'r') as f:
         content = f.read()
         if "MONGODB_URI" not in content:
-            print("FAIL: MONGODB_URI not found in config.env")
+            print("FAIL: MONGODB_URI not found in config.sample.env")
             return False
         if "EMBEDDING_MODEL" not in content:
-            print("FAIL: EMBEDDING_MODEL not found in config.env")
+            print("FAIL: EMBEDDING_MODEL not found in config.sample.env")
             return False
     
     print("PASS: Configuration files are correct!")
@@ -143,8 +147,11 @@ def test_data_files():
 
 def main():
     """Run all tests"""
-    print("IFTAA System Structure Test")
+    print("IFTAA Project Structure Validation")
     print("=" * 40)
+    print("This test validates the project structure and required files.")
+    print("Run this before pushing to GitHub to ensure completeness.")
+    print()
     
     tests = [
         ("Project Structure", test_structure),
@@ -155,16 +162,17 @@ def main():
     
     results = []
     for name, test_func in tests:
-        print(f"\n--- {name} ---")
+        print(f"--- {name} ---")
         try:
             result = test_func()
             results.append((name, result))
         except Exception as e:
             print(f"ERROR: {name} test failed: {e}")
             results.append((name, False))
+        print()
     
-    print("\n" + "=" * 40)
-    print("Test Results:")
+    print("=" * 40)
+    print("Test Results Summary:")
     print("=" * 40)
     
     passed = 0
@@ -177,10 +185,14 @@ def main():
     print(f"\nOverall: {passed}/{len(results)} tests passed")
     
     if passed == len(results):
-        print("SUCCESS: All tests passed! Structure is clean.")
+        print("\nSUCCESS: Project structure is complete and GitHub-ready!")
+        print("- All required files are present")
+        print("- Configuration templates are available") 
+        print("- Safe to push to GitHub")
         return True
     else:
-        print("WARNING: Some tests failed.")
+        print(f"\nWARNING: {len(results) - passed} test(s) failed.")
+        print("Please fix the issues above before pushing to GitHub.")
         return False
 
 if __name__ == "__main__":
