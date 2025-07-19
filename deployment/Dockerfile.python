@@ -19,7 +19,7 @@ RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTr
 # Copy application code
 COPY src/ai-service/semantic_search_service.py .
 COPY src/ai-service/smart_data_loader.py .
-COPY config/config.env .
+# Note: config.env is loaded via environment variables or volume mount
 COPY data/ ./data/
 
 # Expose port

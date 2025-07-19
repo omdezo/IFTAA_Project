@@ -34,7 +34,11 @@ seed_milvus.log
 .env
 .env.local
 .env.production
+.env.dev
+.env.prod
 *.env
+!*.env.example
+!*.env.sample
 config.env
 appsettings.Production.json
 

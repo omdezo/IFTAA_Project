@@ -20,7 +20,8 @@
       "Bash(python:*)",
       "Bash(touch:*)",
       "Bash(chmod:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(cp:*)"
     ],
     "deny": []
   }
