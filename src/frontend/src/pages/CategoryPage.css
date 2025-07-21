@@ -1,0 +1,680 @@
+/* CategoryPage.css - Islamic Gold & Lecture Blue Theme */
+
+.category-page {
+  min-height: 100vh;
+  background-color: var(--c-bg); /* Ivory background */
+  color: var(--c-text); /* Slate text */
+  font-family: 'Tajawal', 'Inter', system-ui, sans-serif;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.category-page::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23D4AF37' fill-opacity='0.04' fill-rule='nonzero'%3E%3Cpath d='m36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+.category-page.rtl {
+  direction: rtl;
+  text-align: right;
+}
+
+.category-page.ltr {
+  direction: ltr;
+  text-align: left;
+}
+
+/* Header with Islamic theme */
+.category-header {
+  padding: 3rem 1rem;
+  background: linear-gradient(135deg, var(--c-secondary) 0%, #153A5B 100%);
+  color: white;
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.category-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23D4AF37' fill-opacity='0.04' fill-rule='nonzero'%3E%3Cpath d='m36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  animation: fadeInUp 0.8s ease-out;
+  position: relative;
+  z-index: 1;
+}
+
+/* Breadcrumb */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.breadcrumb-link {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: inherit;
+  transition: all 150ms ease-out;
+}
+
+.breadcrumb-link:hover {
+  opacity: 0.8;
+  color: var(--c-primary);
+}
+
+.breadcrumb-separator {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.breadcrumb-current {
+  font-weight: 600;
+  color: var(--c-primary);
+}
+
+.category-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0;
+  color: white;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  font-family: 'Tajawal', sans-serif;
+}
+
+.admin-dashboard-btn {
+  background: var(--c-primary);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 150ms ease-out;
+  align-self: flex-start;
+  min-height: 44px;
+}
+
+.admin-dashboard-btn:hover {
+  background: var(--c-primary-hover);
+  transform: translateY(-1px);
+}
+
+/* Search Section */
+.category-search-section {
+  padding: 2rem 1rem;
+  background: white;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.search-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.search-container h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  text-align: center;
+  color: var(--c-secondary);
+  font-weight: 600;
+}
+
+.search-box {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.search-input {
+  flex: 1;
+  padding: 1rem;
+  border: 2px solid var(--c-muted);
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  background: white;
+  color: var(--c-text);
+  font-family: inherit;
+  transition: border-color 150ms ease-out;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+}
+
+.search-input::placeholder {
+  color: #666;
+}
+
+.search-button {
+  padding: 1rem 2rem;
+  background: var(--c-primary);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 150ms ease-out;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  font-family: inherit;
+}
+
+.search-button:hover:not(:disabled) {
+  background: var(--c-primary-hover);
+  transform: translateY(-1px);
+}
+
+.search-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Search Results */
+.search-results {
+  max-width: 800px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  color: var(--c-text);
+  border: 1px solid var(--c-muted);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.search-results h3 {
+  margin-bottom: 1rem;
+  color: var(--c-secondary);
+  font-weight: 600;
+}
+
+.no-results {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  padding: 2rem;
+}
+
+/* Subcategories Section */
+.subcategories-section {
+  padding: 2rem 1rem;
+  background: var(--c-bg);
+  position: relative;
+  z-index: 1;
+}
+
+.subcategories-section h3 {
+  font-size: 1.8rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  color: var(--c-secondary);
+  font-weight: 600;
+}
+
+.subcategories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.subcategory-card {
+  background: white;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 150ms ease-out;
+  color: var(--c-text);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  border: 1px solid var(--c-muted);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.subcategory-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, var(--c-primary) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+}
+
+.subcategory-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.subcategory-card:hover::before {
+  opacity: 0.05;
+}
+
+.subcategory-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--c-text);
+  position: relative;
+  z-index: 1;
+}
+
+/* Fatwas Section */
+.fatwas-section {
+  padding: 2rem 1rem;
+  background: var(--c-bg);
+  position: relative;
+  z-index: 1;
+}
+
+.category-fatwas {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.category-fatwas h3 {
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  color: var(--c-secondary);
+  font-weight: 600;
+}
+
+.fatwa-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.fatwa-card {
+  background: white;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  cursor: pointer;
+  transition: all 150ms ease-out;
+  border-left: 4px solid var(--c-primary);
+  border: 1px solid var(--c-muted);
+  color: var(--c-text);
+}
+
+.fatwa-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.fatwa-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+  gap: 1rem;
+}
+
+.fatwa-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--c-text);
+  margin: 0;
+  flex: 1;
+  line-height: 1.3;
+}
+
+.relevance-score {
+  background: #28a745;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.fatwa-question {
+  color: #666;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.fatwa-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #666;
+  gap: 1rem;
+}
+
+.fatwa-category {
+  background: var(--c-primary);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.fatwa-date {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+/* Pagination */
+.category-pagination {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+}
+
+.page-btn {
+  background: var(--c-secondary);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 150ms ease-out;
+  min-height: 44px;
+  font-family: inherit;
+}
+
+.page-btn:hover:not(:disabled) {
+  background: #2E5F94;
+  transform: translateY(-1px);
+}
+
+.page-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
+}
+
+.page-info {
+  font-weight: 500;
+  color: var(--c-text);
+}
+
+/* Loading and No Results */
+.loading-section {
+  text-align: center;
+  padding: 3rem;
+  color: var(--c-text);
+}
+
+.no-fatwas {
+  text-align: center;
+  padding: 3rem;
+  color: #666;
+  font-style: italic;
+  background: white;
+  border-radius: 1rem;
+  border: 1px solid var(--c-muted);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+/* Footer */
+.category-footer {
+  background: var(--c-secondary);
+  padding: 2rem 1rem;
+  text-align: center;
+  color: white;
+  position: relative;
+  z-index: 1;
+}
+
+.footer-content {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.back-home-btn {
+  background: var(--c-primary);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 150ms ease-out;
+  min-height: 44px;
+  font-family: inherit;
+}
+
+.back-home-btn:hover {
+  background: var(--c-primary-hover);
+  transform: translateY(-1px);
+}
+
+.login-button {
+  background: #17a2b8;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 150ms ease-out;
+  min-height: 44px;
+  font-family: inherit;
+}
+
+.login-button:hover {
+  background: #138496;
+  transform: translateY(-1px);
+}
+
+/* RTL specific adjustments */
+.category-page.rtl .fatwa-header {
+  flex-direction: row-reverse;
+}
+
+.category-page.rtl .fatwa-meta {
+  flex-direction: row-reverse;
+}
+
+.category-page.rtl .footer-content {
+  flex-direction: row-reverse;
+}
+
+.category-page.rtl .breadcrumb {
+  flex-direction: row-reverse;
+}
+
+.category-page.rtl .header-content {
+  align-items: flex-end;
+}
+
+.category-page.rtl .admin-dashboard-btn {
+  align-self: flex-end;
+}
+
+.category-page.rtl .search-box {
+  flex-direction: row-reverse;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .category-title {
+    font-size: 2rem;
+  }
+  
+  .subcategories-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .search-box {
+    flex-direction: column;
+  }
+  
+  .fatwa-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .fatwa-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .footer-content {
+    flex-direction: column;
+  }
+  
+  .pagination {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .header-content {
+    align-items: flex-start;
+  }
+
+  .admin-dashboard-btn {
+    align-self: flex-start;
+  }
+
+  .category-header {
+    padding: 2rem 1rem;
+  }
+
+  .search-container h2 {
+    font-size: 1.3rem;
+  }
+
+  .subcategories-section h3,
+  .category-fatwas h3 {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .category-title {
+    font-size: 1.8rem;
+  }
+
+  .fatwa-card,
+  .subcategory-card {
+    padding: 1rem;
+  }
+
+  .search-input,
+  .search-button {
+    padding: 0.75rem;
+  }
+
+  .category-header {
+    padding: 1.5rem 1rem;
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  .fatwa-card,
+  .subcategory-card,
+  .search-button,
+  .back-home-btn,
+  .login-button,
+  .admin-dashboard-btn,
+  .page-btn {
+    transition: none;
+  }
+
+  .fatwa-card:hover,
+  .subcategory-card:hover,
+  .search-button:hover,
+  .back-home-btn:hover,
+  .login-button:hover,
+  .admin-dashboard-btn:hover,
+  .page-btn:hover {
+    transform: none;
+  }
+
+  .header-content {
+    animation: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .fatwa-card {
+    border: 2px solid #000;
+  }
+
+  .subcategory-card {
+    border: 2px solid #000;
+  }
+
+  .search-button,
+  .back-home-btn,
+  .admin-dashboard-btn {
+    border: 2px solid #000;
+  }
+}
+
+/* Animation keyframes */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

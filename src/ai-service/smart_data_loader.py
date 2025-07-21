@@ -404,7 +404,11 @@ class DataLoader:
             else:
                 for collection_name in [self.milvus_ar_collection, self.milvus_en_collection]:
                     if utility.has_collection(collection_name):
-                        utility.drop_collection(collection_name)
+                        try:
+                            utility.drop_collection(collection_name)
+                        except Exception as e:
+                            logger.warning(f"⚠️  Failed to drop collection {collection_name}: {e}")
+                            logger.info(f"🔄 Continuing with data loading...")
         
         self.create_milvus_collections()
         self.create_mongo_indexes()

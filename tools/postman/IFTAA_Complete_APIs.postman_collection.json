@@ -1,12 +1,632 @@
 {
 	"info": {
-        "_postman_id": "iftaa-dotnet-apis-v1",
-        "name": "IFTAA .NET API Collection",
-        "description": "Complete API collection for the IFTAA .NET Core API with Basic Authentication.\n\nAll endpoints require Basic Auth:\n- Username: admin\n- Password: IftaaAdmin2024!\n\nBase URL: http://localhost:8080\n\nEndpoints:\n1. Add Fatwa (with translation)\n2. Update Fatwa (with re-translation)\n3. Search/Filter Fatwas (relevance, pagination)\n4. Update User Settings\n5. Get Fatwa by ID\n6. Get Similar Fatwas\n7. System Health Check",
+        "_postman_id": "iftaa-dotnet-apis-v3",
+        "name": "IFTAA .NET API Collection v3.0 - Complete",
+        "description": "Complete and comprehensive API collection for the IFTAA .NET Core API with JWT Authentication.\n\n**Authentication:**\n- Login required for protected endpoints\n- JWT Bearer token automatically managed\n- Default credentials: admin / IftaaAdmin2024!\n\n**Base URL:** http://localhost:8080\n\n**Features:**\n✅ JWT Authentication with automatic token management\n✅ Complete Category Management API with hierarchy support\n✅ Enhanced Search with category filtering and semantic search\n✅ User preferences and role-based access control\n✅ System statistics and comprehensive monitoring\n✅ Category diagnostics and maintenance tools\n✅ Comprehensive error handling and validation\n✅ Multi-language support (Arabic/English)\n\n**API Sections:**\n1. 🔐 Authentication & Authorization (4 endpoints)\n2. 📂 Category Management (8 endpoints)\n3. 📖 Fatwa Management (5 endpoints)\n4. 🔍 Search & Filter (5 endpoints)\n5. 👤 User Management (2 endpoints)\n6. 📊 System Status & Monitoring (4 endpoints)\n7. 🔍 System Health (2 endpoints)\n\n**Total: 30 API endpoints**\n\n**New in v3.0:**\n- Added Category Hierarchy endpoint with fatwa counts\n- Added Category Diagnostics for troubleshooting\n- Added Category Structure Initialization\n- Added Category-Fatwa Relationship Sync\n- Added Category Statistics endpoint\n- Fixed parameter naming consistency\n- Enhanced documentation with detailed descriptions",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
+            "name": "🔐 Authentication & Authorization",
+			"item": [
+                {
+                    "name": "Login (Get JWT Token)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 200) {",
+                                    "    const response = pm.response.json();",
+                                    "    if (response.token) {",
+                                    "        pm.environment.set('jwt_token', response.token);",
+                                    "        pm.environment.set('username', response.username);",
+                                    "        pm.environment.set('user_role', response.role);",
+                                    "        console.log('🔑 JWT Token saved successfully');",
+                                    "        console.log('👤 Username:', response.username);",
+                                    "        console.log('🏷️ Role:', response.role);",
+                                    "    }",
+                                    "} else {",
+                                    "    console.log('❌ Login failed');",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/login",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "auth", "login"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Current User Info",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/me",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "auth", "me"]
+                        }
+                    }
+                },
+                {
+                    "name": "Validate JWT Token",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/validate",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "auth", "validate"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Available Roles (Admin Only)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/roles",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "auth", "roles"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "📂 Category Management",
+            "item": [
+                {
+                    "name": "Get All Categories (Hierarchical)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/category",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "category"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Top-Level Categories",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/category/top-level",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "category", "top-level"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Child Categories",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/category/{{parent_category_id}}/children",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "category", "{{parent_category_id}}", "children"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Valid Category Names",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/category/valid",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "category", "valid"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Fatwas by Category",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/category/{{category_id}}/fatwas?page=1&pageSize=10&language=ar",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "category", "{{category_id}}", "fatwas"],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1",
+                                    "description": "Page number (default: 1)"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10",
+                                    "description": "Results per page (default: 10)"
+                                },
+                                {
+                                    "key": "language",
+                                    "value": "ar",
+                                    "description": "Language preference (ar/en)"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Category Hierarchy (with Fatwa Counts)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/category/hierarchy?language=ar",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "category", "hierarchy"],
+                            "query": [
+                                {
+                                    "key": "language",
+                                    "value": "ar",
+                                    "description": "Language preference (ar/en)"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Initialize Category Structure (Admin)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/category/initialize",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "category", "initialize"]
+                        }
+                    }
+                },
+                {
+                    "name": "Sync Category-Fatwa Relationships (Admin)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/category/sync-fatwas",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "category", "sync-fatwas"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Category Diagnostics (Admin)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/category/diagnostics",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "category", "diagnostics"]
+                        }
+                    }
+                }
+            ]
+        },
+		{
+            "name": "📖 Fatwa Management",
+			"item": [
+				{
+                    "name": "Create Fatwa (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+                            "raw": "{\n  \"fatwaId\": 1234,\n  \"titleAr\": \"حكم الصلاة في المسجد\",\n  \"questionAr\": \"ما حكم الصلاة في المسجد؟\",\n  \"answerAr\": \"الصلاة في المسجد مستحبة ومؤكدة\",\n  \"category\": \"عبادات\",\n  \"tags\": [\"صلاة\", \"مسجد\"],\n  \"autoTranslate\": true\n}"
+						},
+						"url": {
+                            "raw": "{{base_url}}/api/fatwa",
+							"host": ["{{base_url}}"],
+                            "path": ["api", "fatwa"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Fatwa by ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/fatwa/{{fatwa_id}}?language={{language}}",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "fatwa", "{{fatwa_id}}"],
+                            "query": [
+                                {
+                                    "key": "language",
+                                    "value": "ar",
+                                    "description": "Language preference (ar/en)"
+                                }
+                            ]
+                        }
+					}
+				},
+				{
+					"name": "Update Fatwa (Admin)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+                            "raw": "{\n  \"titleAr\": \"حكم الصلاة في المسجد (محدث)\",\n  \"titleEn\": \"Ruling on Prayer in Mosque (Updated)\",\n  \"questionAr\": \"ما حكم الصلاة في المسجد؟\",\n  \"questionEn\": \"What is the ruling on praying in the mosque?\",\n  \"answerAr\": \"الصلاة في المسجد مستحبة ومؤكدة ومطلوبة\",\n  \"answerEn\": \"Prayer in the mosque is recommended, emphasized and required\",\n  \"category\": \"عبادات\",\n  \"tags\": [\"صلاة\", \"مسجد\", \"عبادة\"],\n  \"reTranslate\": false\n}"
+						},
+						"url": {
+                            "raw": "{{base_url}}/api/fatwa/{{fatwa_id}}",
+							"host": ["{{base_url}}"],
+                            "path": ["api", "fatwa", "{{fatwa_id}}"]
+                        }
+					}
+				},
+				{
+					"name": "Delete Fatwa (Admin)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+                            "raw": "{{base_url}}/api/fatwa/{{fatwa_id}}",
+							"host": ["{{base_url}}"],
+                            "path": ["api", "fatwa", "{{fatwa_id}}"]
+                        }
+					}
+				}
+            ]
+		},
+		{
+            "name": "🔍 Search & Filter",
+			"item": [
+				{
+                    "name": "Search Fatwas (Basic)",
+					"request": {
+                        "method": "GET",
+						"header": [],
+						"url": {
+                            "raw": "{{base_url}}/api/fatwa/search?query={{search_query_ar}}&language={{language}}&page={{page}}&pageSize={{pageSize}}",
+							"host": ["{{base_url}}"],
+                            "path": ["api", "fatwa", "search"],
+                            "query": [
+                                {
+                                    "key": "query",
+                                    "value": "صلاة",
+                                    "description": "Search query"
+                                },
+                                {
+                                    "key": "language",
+                                    "value": "ar",
+                                    "description": "Language preference (ar/en)"
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "1",
+                                    "description": "Page number"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10",
+                                    "description": "Results per page"
+                                }
+                            ]
+                        }
+					}
+				},
+                {
+                    "name": "Search Fatwas (with Category Filter)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/fatwa/search?query=صلاة&categoryId={{category_id}}&language=ar&page=1&pageSize=10",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "fatwa", "search"],
+                            "query": [
+                                {
+                                    "key": "query",
+                                    "value": "صلاة",
+                                    "description": "Search query"
+                                },
+                                {
+                                    "key": "categoryId",
+                                    "value": "{{category_id}}",
+                                    "description": "Filter by category ID"
+                                },
+                                {
+                                    "key": "language",
+                                    "value": "ar",
+                                    "description": "Language preference"
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "1",
+                                    "description": "Page number"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10",
+                                    "description": "Results per page"
+                                }
+                            ]
+                        }
+                    }
+                },
+				{
+                    "name": "Search Fatwas (English)",
+					"request": {
+                        "method": "GET",
+						"header": [],
+						"url": {
+                            "raw": "{{base_url}}/api/fatwa/search?query={{search_query_en}}&language=en&page={{page}}&pageSize={{pageSize}}",
+							"host": ["{{base_url}}"],
+                            "path": ["api", "fatwa", "search"],
+                            "query": [
+                                {
+                                    "key": "query",
+                                    "value": "{{search_query_en}}"
+                                },
+                                {
+                                    "key": "language",
+                                    "value": "en"
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10"
+                                }
+                            ]
+                        }
+					}
+				},
+				{
+                    "name": "Get All Fatwas (Paginated)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+                            "raw": "{{base_url}}/api/fatwa?page={{page}}&pageSize={{pageSize}}&language={{language}}",
+							"host": ["{{base_url}}"],
+                            "path": ["api", "fatwa"],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "20"
+                                },
+                                {
+                                    "key": "language",
+                                    "value": "ar"
+                                }
+                            ]
+                        }
+					}
+				},
+				{
+                    "name": "Get Similar Fatwas",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+                            "raw": "{{base_url}}/api/fatwa/{{fatwa_id}}/similar?limit=5&language={{language}}",
+							"host": ["{{base_url}}"],
+                            "path": ["api", "fatwa", "{{fatwa_id}}", "similar"],
+							"query": [
+								{
+                                    "key": "limit",
+                                    "value": "5",
+                                    "description": "Max similar fatwas to return"
+								},
+								{
+                                    "key": "language",
+									"value": "ar",
+                                    "description": "Language preference"
+								}
+							]
+                        }
+					}
+				}
+            ]
+		},
+		{
+            "name": "👤 User Management",
+			"item": [
+				{
+                    "name": "Get User Settings",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+                            "raw": "{{base_url}}/api/user/{{user_id}}/settings",
+							"host": ["{{base_url}}"],
+                            "path": ["api", "user", "{{user_id}}", "settings"]
+                        }
+                    }
+                },
+                {
+                    "name": "Update User Settings",
+					"request": {
+                        "method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+                            "raw": "{\n  \"preferredLanguage\": \"ar\",\n  \"resultsPerPage\": 15,\n  \"searchPreferences\": {\n    \"includeArabic\": true,\n    \"includeEnglish\": true\n  }\n}"
+						},
+						"url": {
+                            "raw": "{{base_url}}/api/user/{{user_id}}/settings",
+							"host": ["{{base_url}}"],
+                            "path": ["api", "user", "{{user_id}}", "settings"]
+                        }
+					}
+				}
+            ]
+        },
+        {
+            "name": "📊 System Status & Monitoring",
+            "item": [
+                {
+                    "name": "Check MongoDB Status (Admin)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/system/mongodb-status",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "system", "mongodb-status"]
+                        }
+                    }
+                },
+                {
+                    "name": "Check Milvus Vector DB Status (Admin)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/system/milvus-status",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "system", "milvus-status"]
+					}
+				}
+                },
+                {
+                    "name": "Get System Statistics (Admin)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/system/stats",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "system", "stats"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Category Statistics (Admin)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{jwt_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/system/category-stats",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "system", "category-stats"]
+                        }
+                    }
+                }
+            ]
+		},
+        {
             "name": "🔍 System Health",
 			"item": [
                 {
@@ -34,344 +654,6 @@
 					}
 				}
             ]
-		},
-		{
-            "name": "📖 Fatwa Management",
-			"item": [
-				{
-                    "name": "Create Fatwa",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-                                "value": "Basic {{basic_auth}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-                            "raw": "{\n  \"fatwaId\": 1234,\n  \"titleAr\": \"حكم الصلاة في المسجد\",\n  \"questionAr\": \"ما حكم الصلاة في المسجد؟\",\n  \"answerAr\": \"الصلاة في المسجد مستحبة ومؤكدة\",\n  \"category\": \"عبادات\",\n  \"tags\": [\"صلاة\", \"مسجد\"],\n  \"autoTranslate\": true\n}"
-						},
-						"url": {
-                            "raw": "{{base_url}}/api/fatwa",
-							"host": ["{{base_url}}"],
-                            "path": ["api", "fatwa"]
-                        }
-                    }
-                },
-                {
-                    "name": "Get Fatwa by ID",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Basic {{basic_auth}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/api/fatwa/1234?lang=ar",
-                            "host": ["{{base_url}}"],
-                            "path": ["api", "fatwa", "1234"],
-                            "query": [
-                                {
-                                    "key": "lang",
-                                    "value": "ar",
-                                    "description": "Language preference (ar/en)"
-                                }
-                            ]
-                        }
-					}
-				},
-				{
-					"name": "Update Fatwa",
-					"request": {
-						"method": "PUT",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-                                "value": "Basic {{basic_auth}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-                            "raw": "{\n  \"titleAr\": \"حكم الصلاة في المسجد (محدث)\",\n  \"questionAr\": \"ما حكم الصلاة في المسجد؟\",\n  \"answerAr\": \"الصلاة في المسجد مستحبة ومؤكدة ومطلوبة\",\n  \"category\": \"عبادات\",\n  \"tags\": [\"صلاة\", \"مسجد\", \"عبادة\"]\n}"
-						},
-						"url": {
-                            "raw": "{{base_url}}/api/fatwa/1234",
-							"host": ["{{base_url}}"],
-                            "path": ["api", "fatwa", "1234"]
-                        }
-					}
-				},
-				{
-					"name": "Delete Fatwa",
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "Authorization",
-                                "value": "Basic {{basic_auth}}"
-							}
-						],
-						"url": {
-                            "raw": "{{base_url}}/api/fatwa/1234",
-							"host": ["{{base_url}}"],
-                            "path": ["api", "fatwa", "1234"]
-                        }
-					}
-				}
-            ]
-		},
-		{
-            "name": "🔍 Search & Filter",
-			"item": [
-				{
-                    "name": "Search Fatwas (Arabic)",
-					"request": {
-                        "method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-                                "value": "Basic {{basic_auth}}"
-							}
-						],
-						"url": {
-                            "raw": "{{base_url}}/api/fatwa/search?query=صلاة&lang=ar&page=1&pageSize=10",
-							"host": ["{{base_url}}"],
-                            "path": ["api", "fatwa", "search"],
-                            "query": [
-                                {
-                                    "key": "query",
-                                    "value": "صلاة",
-                                    "description": "Search query"
-                                },
-                                {
-                                    "key": "lang",
-                                    "value": "ar",
-                                    "description": "Language preference"
-                                },
-                                {
-                                    "key": "page",
-                                    "value": "1",
-                                    "description": "Page number"
-                                },
-                                {
-                                    "key": "pageSize",
-                                    "value": "10",
-                                    "description": "Results per page"
-                                }
-                            ]
-                        }
-					}
-				},
-				{
-                    "name": "Search Fatwas (English)",
-					"request": {
-                        "method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-                                "value": "Basic {{basic_auth}}"
-							}
-						],
-						"url": {
-                            "raw": "{{base_url}}/api/fatwa/search?query=prayer&lang=en&page=1&pageSize=10",
-							"host": ["{{base_url}}"],
-                            "path": ["api", "fatwa", "search"],
-                            "query": [
-                                {
-                                    "key": "query",
-                                    "value": "prayer"
-                                },
-                                {
-                                    "key": "lang",
-                                    "value": "en"
-                                },
-                                {
-                                    "key": "page",
-                                    "value": "1"
-                                },
-                                {
-                                    "key": "pageSize",
-                                    "value": "10"
-                                }
-                            ]
-                        }
-					}
-				},
-				{
-                    "name": "Get All Fatwas",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-                                "value": "Basic {{basic_auth}}"
-							}
-						],
-						"url": {
-                            "raw": "{{base_url}}/api/fatwa?page=1&pageSize=20&lang=ar",
-							"host": ["{{base_url}}"],
-                            "path": ["api", "fatwa"],
-                            "query": [
-                                {
-                                    "key": "page",
-                                    "value": "1"
-                                },
-                                {
-                                    "key": "pageSize",
-                                    "value": "20"
-                                },
-                                {
-                                    "key": "lang",
-                                    "value": "ar"
-                                }
-                            ]
-                        }
-					}
-				},
-				{
-                    "name": "Get Similar Fatwas",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-                                "value": "Basic {{basic_auth}}"
-							}
-						],
-						"url": {
-                            "raw": "{{base_url}}/api/fatwa/1234/similar?limit=5&lang=ar",
-							"host": ["{{base_url}}"],
-                            "path": ["api", "fatwa", "1234", "similar"],
-							"query": [
-								{
-                                    "key": "limit",
-                                    "value": "5",
-                                    "description": "Max 5 similar fatwas"
-								},
-								{
-                                    "key": "lang",
-									"value": "ar",
-                                    "description": "Language preference"
-								}
-							]
-                        }
-					}
-				}
-            ]
-		},
-		{
-            "name": "👤 User Management",
-			"item": [
-				{
-                    "name": "Update User Settings",
-					"request": {
-                        "method": "PUT",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-                            },
-                            {
-                                "key": "Authorization",
-                                "value": "Basic {{basic_auth}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-                            "raw": "{\n  \"preferredLanguage\": \"ar\",\n  \"resultsPerPage\": 15,\n  \"searchPreferences\": {\n    \"includeArabic\": true,\n    \"includeEnglish\": true\n  }\n}"
-						},
-						"url": {
-                            "raw": "{{base_url}}/api/user/123/settings",
-							"host": ["{{base_url}}"],
-                            "path": ["api", "user", "123", "settings"]
-                        }
-					}
-				},
-				{
-                    "name": "Get User Settings",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-                                "value": "Basic {{basic_auth}}"
-							}
-						],
-						"url": {
-                            "raw": "{{base_url}}/api/user/123/settings",
-							"host": ["{{base_url}}"],
-                            "path": ["api", "user", "123", "settings"]
-                        }
-                    }
-                }
-            ]
-        },
-        {
-            "name": "📊 System Status",
-            "item": [
-                {
-                    "name": "Check MongoDB Status",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-								{
-                                "key": "Authorization",
-                                "value": "Basic {{basic_auth}}"
-								}
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/api/system/mongodb-status",
-                            "host": ["{{base_url}}"],
-                            "path": ["api", "system", "mongodb-status"]
-                        }
-                    }
-                },
-                {
-                    "name": "Check Milvus Status",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Basic {{basic_auth}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/api/system/milvus-status",
-                            "host": ["{{base_url}}"],
-                            "path": ["api", "system", "milvus-status"]
-					}
-				}
-                },
-                {
-                    "name": "System Statistics",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Basic {{basic_auth}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/api/system/stats",
-                            "host": ["{{base_url}}"],
-                            "path": ["api", "system", "stats"]
-                        }
-                    }
-                }
-            ]
 		}
 	],
 	"event": [
@@ -380,11 +662,17 @@
 			"script": {
 				"type": "text/javascript",
 				"exec": [
-                    "// Set Basic Authentication",
-                    "const username = 'admin';",
-                    "const password = 'IftaaAdmin2024!';",
-					"const credentials = btoa(username + ':' + password);",
-                    "pm.environment.set('basic_auth', credentials);"
+                    "// Auto-login if no JWT token exists",
+                    "if (!pm.environment.get('jwt_token')) {",
+                    "    console.log('🔄 No JWT token found, attempting auto-login...');",
+                    "    // Set default credentials if not already set",
+                    "    if (!pm.environment.get('username')) {",
+                    "        pm.environment.set('username', 'admin');",
+                    "    }",
+                    "    if (!pm.environment.get('password')) {",
+                    "        pm.environment.set('password', 'IftaaAdmin2024!');",
+                    "    }",
+                    "}"
 				]
 			}
 		}
@@ -394,6 +682,61 @@
 			"key": "base_url",
             "value": "http://localhost:8080",
             "description": "IFTAA .NET API base URL"
-		}
+		},
+        {
+            "key": "username",
+            "value": "admin",
+            "description": "Default username for authentication"
+        },
+        {
+            "key": "password",
+            "value": "IftaaAdmin2024!",
+            "description": "Default password for authentication"
+        },
+        {
+            "key": "user_id",
+            "value": "admin",
+            "description": "Sample user ID for testing"
+        },
+        {
+            "key": "category_id",
+            "value": "1",
+            "description": "Sample category ID for testing (عبادات)"
+        },
+        {
+            "key": "parent_category_id",
+            "value": "1",
+            "description": "Sample parent category ID for testing"
+        },
+        {
+            "key": "fatwa_id",
+            "value": "1",
+            "description": "Sample fatwa ID for testing"
+        },
+        {
+            "key": "search_query_ar",
+            "value": "صلاة",
+            "description": "Arabic search query example"
+        },
+        {
+            "key": "search_query_en",
+            "value": "prayer",
+            "description": "English search query example"
+        },
+        {
+            "key": "language",
+            "value": "ar",
+            "description": "Default language (ar/en)"
+        },
+        {
+            "key": "page",
+            "value": "1",
+            "description": "Default page number"
+        },
+        {
+            "key": "pageSize",
+            "value": "10",
+            "description": "Default page size"
+        }
 	]
-} 
+}

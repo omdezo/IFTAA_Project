@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using MongoDB.Bson;
+using IFTAA_Project.Services;
 
 namespace IFTAA_Project.Controllers
 {
@@ -51,7 +52,7 @@ namespace IFTAA_Project.Controllers
         }
 
         [HttpGet("milvus-status")]
-        public async Task<IActionResult> GetMilvusStatus()
+        public IActionResult GetMilvusStatus()
         {
             try
             {
@@ -114,6 +115,47 @@ namespace IFTAA_Project.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "System stats collection failed");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        [HttpGet("category-stats")]
+        public async Task<IActionResult> GetCategoryStats()
+        {
+            try
+            {
+                var fatwaCollection = _database.GetCollection<Models.Fatwa>("fatwas");
+                
+                // Get category distribution
+                var pipeline = new BsonDocument[]
+                {
+                    new BsonDocument("$match", new BsonDocument("is_active", true)),
+                    new BsonDocument("$group", new BsonDocument
+                    {
+                        {"_id", "$category"},
+                        {"count", new BsonDocument("$sum", 1)}
+                    }),
+                    new BsonDocument("$sort", new BsonDocument("count", -1))
+                };
+
+                var categoryStats = await fatwaCollection.Aggregate<BsonDocument>(pipeline).ToListAsync();
+                var totalFatwas = await fatwaCollection.CountDocumentsAsync(f => f.IsActive);
+                
+                return Ok(new
+                {
+                    totalFatwas,
+                    totalCategories = categoryStats.Count,
+                    categoryDistribution = categoryStats.Take(20).Select(doc => new 
+                    {
+                        category = doc["_id"].ToString(),
+                        count = doc["count"].ToInt32()
+                    }),
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting category stats");
                 return StatusCode(500, new { error = ex.Message });
             }
         }

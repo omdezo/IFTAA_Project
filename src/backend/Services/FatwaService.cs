@@ -246,28 +246,29 @@ namespace IFTAA_Project.Services
 
         public async Task<PaginatedSearchResponseDto> SearchFatwasAsync(string query, string language = "", int page = 1, int pageSize = 10, int? categoryId = null)
         {
+            // If categoryId is provided, get fatwas from that category and descendants first
+            List<int>? categoryFatwaIds = null;
+            
             try
             {
                 // Default to Arabic if language not specified
                 language = string.IsNullOrEmpty(language) ? "ar" : language;
 
-                // Build search URL with optional category filtering
-                var searchUrl = $"{_pythonServiceUrl}/api/search?query={Uri.EscapeDataString(query)}&lang={language}&page={page}&page_size={pageSize}";
-                
-                // If categoryId is provided, get fatwas from that category and descendants first
-                List<int>? categoryFatwaIds = null;
+                // If categoryId is provided, get all fatwa IDs from category and ALL subcategories
                 if (categoryId.HasValue)
                 {
-                    var categoryResult = await _categoryService.GetFatwasInCategoryAsync(categoryId.Value, 1, int.MaxValue);
-                    if (categoryResult is IDictionary<string, object> dict && dict.ContainsKey("fatwas"))
-                    {
-                        var fatwas = dict["fatwas"] as IEnumerable<object>;
-                        if (fatwas != null)
-                        {
-                            categoryFatwaIds = fatwas.Cast<dynamic>().Select(f => (int)f.fatwaId).ToList();
-                        }
-                    }
+                    categoryFatwaIds = await _categoryService.GetAllFatwaIdsInCategoryAndSubcategoriesAsync(categoryId.Value);
+                    _logger.LogInformation($"Category-specific search: Found {categoryFatwaIds.Count} fatwas in category {categoryId.Value} and its subcategories");
                 }
+                
+                // If query is empty or null, use fallback search directly with category filtering
+                if (string.IsNullOrWhiteSpace(query))
+                {
+                    return await FallbackTextSearchAsync("", language, page, pageSize, categoryFatwaIds);
+                }
+
+                // Build search URL for semantic search
+                var searchUrl = $"{_pythonServiceUrl}/api/search?query={Uri.EscapeDataString(query)}&lang={language}&page={page}&page_size={pageSize}";
 
                 var response = await _httpClient.GetAsync(searchUrl);
                 
@@ -401,7 +402,7 @@ namespace IFTAA_Project.Services
         {
             try
             {
-                var filter = Builders<Fatwa>.Filter.Eq(f => f.IsActive, true);
+                var filter = Builders<Fatwa>.Filter.Empty;
                 var totalCount = await _dbContext.Fatwas.CountDocumentsAsync(filter);
                 
                 var fatwas = await _dbContext.Fatwas
@@ -441,13 +442,15 @@ namespace IFTAA_Project.Services
         {
             try
             {
-                _logger.LogInformation($"Using fallback text search for query: {query}");
+                _logger.LogInformation($"Using fallback text search for query: '{query}'");
                 
-                var filterConditions = new List<FilterDefinition<Fatwa>>
+                var filterConditions = new List<FilterDefinition<Fatwa>>();
+
+                // Only add text search if query is not empty
+                if (!string.IsNullOrWhiteSpace(query))
                 {
-                    Builders<Fatwa>.Filter.Text(query),
-                    Builders<Fatwa>.Filter.Eq(f => f.IsActive, true)
-                };
+                    filterConditions.Add(Builders<Fatwa>.Filter.Text(query));
+                }
 
                 // Add category filtering if specified
                 if (categoryFatwaIds != null && categoryFatwaIds.Any())

@@ -23,6 +23,7 @@ from fastapi import FastAPI, Request, Depends, HTTPException, status, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+
 # --- Database and AI/ML Imports ---
 import pymongo
 from pymongo import MongoClient
@@ -1708,6 +1709,7 @@ async def query_master_demo():
     except Exception as e:
         logger.error(f"Query master demo error: {e}")
         raise HTTPException(status_code=500, detail=f"Demo failed: {str(e)}")
+
 
 @app.post("/api/smart_search", summary="Smart search with FatwaQueryMaster optimization")
 async def smart_search_endpoint(

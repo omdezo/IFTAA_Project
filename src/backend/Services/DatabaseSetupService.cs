@@ -1,4 +1,5 @@
 using IFTAA_Project.Data;
+using IFTAA_Project.Models;
 using MongoDB.Driver;
 
 namespace IFTAA_Project.Services
@@ -88,36 +89,36 @@ namespace IFTAA_Project.Services
                 );
 
                 // Categories collection indexes
-                var categoriesCollection = _dbContext.Database.GetCollection<CategoryService.CategoryDocument>("categories");
+                var categoriesCollection = _dbContext.Database.GetCollection<CategoryDocument>("categories");
                 
                 // Unique index on category id
                 await categoriesCollection.Indexes.CreateOneAsync(
-                    new CreateIndexModel<CategoryService.CategoryDocument>(
-                        Builders<CategoryService.CategoryDocument>.IndexKeys.Ascending(c => c.Id),
+                    new CreateIndexModel<CategoryDocument>(
+                        Builders<CategoryDocument>.IndexKeys.Ascending(c => c.Id),
                         new CreateIndexOptions { Unique = true, Name = "idx_category_id" }
                     )
                 );
 
                 // Unique index on category title
                 await categoriesCollection.Indexes.CreateOneAsync(
-                    new CreateIndexModel<CategoryService.CategoryDocument>(
-                        Builders<CategoryService.CategoryDocument>.IndexKeys.Ascending(c => c.Title),
+                    new CreateIndexModel<CategoryDocument>(
+                        Builders<CategoryDocument>.IndexKeys.Ascending(c => c.Title),
                         new CreateIndexOptions { Unique = true, Name = "idx_category_title" }
                     )
                 );
 
                 // Index on parent ID for hierarchy queries
                 await categoriesCollection.Indexes.CreateOneAsync(
-                    new CreateIndexModel<CategoryService.CategoryDocument>(
-                        Builders<CategoryService.CategoryDocument>.IndexKeys.Ascending(c => c.ParentId),
+                    new CreateIndexModel<CategoryDocument>(
+                        Builders<CategoryDocument>.IndexKeys.Ascending(c => c.ParentId),
                         new CreateIndexOptions { Name = "idx_parent_id" }
                     )
                 );
 
                 // Index on active status
                 await categoriesCollection.Indexes.CreateOneAsync(
-                    new CreateIndexModel<CategoryService.CategoryDocument>(
-                        Builders<CategoryService.CategoryDocument>.IndexKeys.Ascending(c => c.IsActive),
+                    new CreateIndexModel<CategoryDocument>(
+                        Builders<CategoryDocument>.IndexKeys.Ascending(c => c.IsActive),
                         new CreateIndexOptions { Name = "idx_category_active" }
                     )
                 );
@@ -157,7 +158,7 @@ namespace IFTAA_Project.Services
                 });
 
                 // Get categories collection indexes
-                var categoriesCollection = _dbContext.Database.GetCollection<CategoryService.CategoryDocument>("categories");
+                var categoriesCollection = _dbContext.Database.GetCollection<CategoryDocument>("categories");
                 var categoryIndexes = await categoriesCollection.Indexes.ListAsync();
                 await categoryIndexes.ForEachAsync(index => 
                 {

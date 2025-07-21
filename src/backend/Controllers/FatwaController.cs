@@ -59,18 +59,29 @@ namespace IFTAA_Project.Controllers
         }
 
         [HttpGet("search")]
-        public async Task<IActionResult> SearchFatwas([FromQuery] string query, [FromQuery] string language = "", [FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? userId = null, [FromQuery] int? categoryId = null)
+        public async Task<IActionResult> SearchFatwas([FromQuery] string? query = null, [FromQuery] string language = "", [FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? userId = null, [FromQuery] int? categoryId = null)
         {
-            if (!string.IsNullOrEmpty(userId))
+            try
             {
-                var userPref = await _userService.GetUserSettingsAsync(userId);
-                if (userPref != null)
+                // Handle null query parameter
+                query = query ?? "";
+                
+                if (!string.IsNullOrEmpty(userId))
                 {
-                    language = userPref.PreferredLanguage;
+                    var userPref = await _userService.GetUserSettingsAsync(userId);
+                    if (userPref != null)
+                    {
+                        language = userPref.PreferredLanguage;
+                    }
                 }
+                
+                var results = await _fatwaService.SearchFatwasAsync(query, language, page, pageSize, categoryId);
+                return Ok(results);
             }
-            var results = await _fatwaService.SearchFatwasAsync(query, language, page, pageSize, categoryId);
-            return Ok(results);
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Internal server error", details = ex.Message });
+            }
         }
 
         [HttpGet("{id}/similar")]

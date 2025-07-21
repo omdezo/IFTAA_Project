@@ -12,6 +12,7 @@ namespace IFTAA_Project.Data
             _database = database;
         }
 
+        public IMongoDatabase Database => _database;
         public IMongoCollection<Fatwa> Fatwas => _database.GetCollection<Fatwa>("fatwas");
         public IMongoCollection<User> Users => _database.GetCollection<User>("users");
     }

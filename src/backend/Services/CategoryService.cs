@@ -1,276 +1,421 @@
 using IFTAA_Project.Data;
-using Microsoft.Extensions.Logging;
+using IFTAA_Project.Models;
 using MongoDB.Driver;
+using MongoDB.Bson;
 
 namespace IFTAA_Project.Services
 {
     public class CategoryService
     {
-        private readonly IftaaDbContext _dbContext;
-        private readonly ILogger<CategoryService> _logger;
-        
-        public CategoryService(IftaaDbContext dbContext, ILogger<CategoryService> logger)
+        private readonly IftaaDbContext _context;
+
+        public CategoryService(IftaaDbContext context)
         {
-            _dbContext = dbContext;
-            _logger = logger;
+            _context = context;
         }
 
-        public static readonly List<string> ValidCategories = new()
+        // Real Category Mapping - Maps actual fatwa categories to hierarchical structure
+        // CLEANED UP - Only includes categories that actually exist in database
+                public static readonly Dictionary<string, int> RealCategoryMapping = new()
         {
-            "فتاوى العبادات",
-            "فتاوى الصلاة", 
-            "فتاوى الزكاة",
-            "فتاوى الصوم",
-            "فتاوى الحج",
-            "فتاوى النكاح",
-            "فتاوى الزواج",
-            "فتاوى الفراق",
-            "فتاوى المعاملات",
-            "فتاوى البيوع",
-            "الربا",
-            "الديون",
-            "الشركات",
-            "أوجه من المعاملات",
-            "فتاوى الوصية – الوقف – بيت المال",
-            "فتاوى الوصية",
-            "فتاوى الوقف",
-            "فتاوى بيت المال",
-            "فتاوى المساجد – مدارس تعليم القرآن الكريم – الأفلاج",
-            "فتاوى المساجد",
-            "مدارس تعليم القرآن الكريم",
-            "الأفلاج",
-            "فتاوى الأيمان – الكفارات – النذور",
-            "فتاوى الأيمان",
-            "الكفارات",
-            "النذور",
-            "فتاوى الذبائح – الأطعمة – التدخين",
-            "فتاوى الذبائح",
-            "الأطعمة",
-            "التدخين",
-            "إعلام وتواصل",
-            "التوبة والتبعات والحقوق",
-            "اللباس والزينة",
-            "الحدود والتعزيرات",
-            "فقه المواريث",
-            "طب"
+            ["فتاوى العبادات"] = 1,
+            ["فتاوى الصلاة"] = 11,
+            ["فتاوى الزكاة"] = 12,
+            ["فتاوى الصوم"] = 13,
+            ["فتاوى الحج"] = 14,
+            ["فتاوى النكاح"] = 2,
+            ["فتاوى الزواج"] = 21,
+            ["فتاوى الفراق"] = 22,
+            ["فتاوى المعاملات"] = 3,
+            ["فتاوى البيوع"] = 31,
+            ["الربا"] = 32,
+            ["الديون"] = 33,
+            ["الشركات"] = 34,
+            ["أوجه من المعاملات"] = 35,
+            ["فتاوى الوصية – الوقف – بيت المال"] = 4,
+            ["فتاوى الوصية"] = 41,
+            ["فتاوى الوقف"] = 42,
+            ["فتاوى بيت المال"] = 43,
+            ["فتاوى المساجد – مدارس تعليم القرآن الكريم – الأفلاج"] = 5,
+            ["فتاوى المساجد"] = 51,
+            ["مدارس تعليم القرآن الكريم"] = 52,
+            ["الأفلاج"] = 53,
+            ["فتاوى الأيمان – الكفارات – النذور"] = 6,
+            ["فتاوى الأيمان"] = 61,
+            ["الكفارات"] = 62,
+            ["النذور"] = 63,
+            ["فتاوى الذبائح والأطعمة"] = 7,
+            ["فتاوى الذبائح"] = 71,
+            ["الأطعمة"] = 72,
+            ["إعلام وتواصل"] = 80,
+            ["التوبة والتبعات والحقوق"] = 81,
+            ["اللباس والزينة"] = 82,
+            ["الحدود والتعزيرات"] = 83,
+            ["فقه المواريث"] = 84,
+            ["طب"] = 85,
         };
 
-        public async Task<List<CategoryDto>> GetAllCategoriesAsync()
+                public static readonly List<CategoryHierarchy> CategoryStructure = new()
         {
-            try
-            {
-                var categories = await _dbContext.Database
-                    .GetCollection<CategoryDocument>("categories")
-                    .Find(_ => true)
-                    .Sort(Builders<CategoryDocument>.Sort.Ascending("id"))
-                    .ToListAsync();
-
-                return categories.Select(c => new CategoryDto
+            new CategoryHierarchy 
+            { 
+                Id = 1, Title = "فتاوى العبادات", TitleEn = "Worship Fatwas", 
+                Children = new List<CategoryHierarchy>
                 {
-                    Id = c.Id,
-                    Title = c.Title,
-                    ParentId = c.ParentId,
-                    Description = c.Description,
-                    FatwaCount = c.FatwaIds?.Count ?? 0,
-                    IsActive = c.IsActive
-                }).ToList();
+                    new CategoryHierarchy { Id = 11, Title = "فتاوى الصلاة", TitleEn = "Prayer Fatwas", ParentId = 1 },
+                    new CategoryHierarchy { Id = 12, Title = "فتاوى الزكاة", TitleEn = "Zakat Fatwas", ParentId = 1 },
+                    new CategoryHierarchy { Id = 13, Title = "فتاوى الصوم", TitleEn = "Fasting Fatwas", ParentId = 1 },
+                    new CategoryHierarchy { Id = 14, Title = "فتاوى الحج", TitleEn = "Hajj Fatwas", ParentId = 1 }
+                }
+            },
+            new CategoryHierarchy 
+            { 
+                Id = 2, Title = "فتاوى النكاح", TitleEn = "Marriage Fatwas", 
+                Children = new List<CategoryHierarchy>
+                {
+                    new CategoryHierarchy { Id = 21, Title = "فتاوى الزواج", TitleEn = "Wedding Fatwas", ParentId = 2 },
+                    new CategoryHierarchy { Id = 22, Title = "فتاوى الفراق", TitleEn = "Divorce Fatwas", ParentId = 2 }
+                }
+            },
+            new CategoryHierarchy 
+            { 
+                Id = 3, Title = "فتاوى المعاملات", TitleEn = "Transaction Fatwas", 
+                Children = new List<CategoryHierarchy>
+                {
+                    new CategoryHierarchy { Id = 31, Title = "فتاوى البيوع", TitleEn = "Sales Fatwas", ParentId = 3 },
+                    new CategoryHierarchy { Id = 32, Title = "الربا", TitleEn = "Interest/Usury", ParentId = 3 },
+                    new CategoryHierarchy { Id = 33, Title = "الديون", TitleEn = "Debts", ParentId = 3 },
+                    new CategoryHierarchy { Id = 34, Title = "الشركات", TitleEn = "Companies", ParentId = 3 },
+                    new CategoryHierarchy { Id = 35, Title = "أوجه من المعاملات", TitleEn = "Transaction Aspects", ParentId = 3 }
+                }
+            },
+            new CategoryHierarchy 
+            { 
+                Id = 4, Title = "فتاوى الوصية – الوقف – بيت المال", TitleEn = "Will, Endowment & Treasury Fatwas", 
+                Children = new List<CategoryHierarchy>
+                {
+                    new CategoryHierarchy { Id = 41, Title = "فتاوى الوصية", TitleEn = "Will Fatwas", ParentId = 4 },
+                    new CategoryHierarchy { Id = 42, Title = "فتاوى الوقف", TitleEn = "Endowment Fatwas", ParentId = 4 },
+                    new CategoryHierarchy { Id = 43, Title = "فتاوى بيت المال", TitleEn = "Treasury Fatwas", ParentId = 4 }
+                }
+            },
+            new CategoryHierarchy 
+            { 
+                Id = 5, Title = "فتاوى المساجد – مدارس تعليم القرآن الكريم – الأفلاج", TitleEn = "Mosques, Quran Schools & Irrigation", 
+                Children = new List<CategoryHierarchy>
+                {
+                    new CategoryHierarchy { Id = 51, Title = "فتاوى المساجد", TitleEn = "Mosque Fatwas", ParentId = 5 },
+                    new CategoryHierarchy { Id = 52, Title = "مدارس تعليم القرآن الكريم", TitleEn = "Quran Teaching Schools", ParentId = 5 },
+                    new CategoryHierarchy { Id = 53, Title = "الأفلاج", TitleEn = "Irrigation Systems", ParentId = 5 }
+                }
+            },
+            new CategoryHierarchy 
+            { 
+                Id = 6, Title = "فتاوى الأيمان – الكفارات – النذور", TitleEn = "Oaths, Atonements & Vows", 
+                Children = new List<CategoryHierarchy>
+                {
+                    new CategoryHierarchy { Id = 61, Title = "فتاوى الأيمان", TitleEn = "Oath Fatwas", ParentId = 6 },
+                    new CategoryHierarchy { Id = 62, Title = "الكفارات", TitleEn = "Atonements", ParentId = 6 },
+                    new CategoryHierarchy { Id = 63, Title = "النذور", TitleEn = "Vows", ParentId = 6 }
+                }
+            },
+            new CategoryHierarchy 
+            { 
+                Id = 7, Title = "فتاوى الذبائح والأطعمة", TitleEn = "Slaughter & Food Fatwas", 
+                Children = new List<CategoryHierarchy>
+                {
+                    new CategoryHierarchy { Id = 71, Title = "فتاوى الذبائح", TitleEn = "Slaughter Fatwas", ParentId = 7 },
+                    new CategoryHierarchy { Id = 72, Title = "الأطعمة", TitleEn = "Food Fatwas", ParentId = 7 }
+                }
+            },
+            new CategoryHierarchy 
+            { 
+                Id = 8, Title = "فتاوى متنوعة", TitleEn = "Miscellaneous Fatwas", 
+                Children = new List<CategoryHierarchy>
+                {
+                    new CategoryHierarchy { Id = 80, Title = "إعلام وتواصل", TitleEn = "Media & Communication", ParentId = 8 },
+                    new CategoryHierarchy { Id = 81, Title = "التوبة والتبعات والحقوق", TitleEn = "Repentance & Rights", ParentId = 8 },
+                    new CategoryHierarchy { Id = 82, Title = "اللباس والزينة", TitleEn = "Clothing & Adornment", ParentId = 8 },
+                    new CategoryHierarchy { Id = 83, Title = "الحدود والتعزيرات", TitleEn = "Punishments", ParentId = 8 },
+                    new CategoryHierarchy { Id = 84, Title = "فقه المواريث", TitleEn = "Inheritance Jurisprudence", ParentId = 8 },
+                    new CategoryHierarchy { Id = 85, Title = "طب", TitleEn = "Medicine", ParentId = 8 }
+                }
             }
-            catch (Exception ex)
+        };
+
+        public int GetCategoryId(string categoryName)
+        {
+            // First try exact match in RealCategoryMapping
+            if (RealCategoryMapping.TryGetValue(categoryName, out int categoryId))
             {
-                _logger.LogError(ex, "Error retrieving categories");
-                return new List<CategoryDto>();
+                return categoryId;
             }
+
+            // Default fallback to general miscellaneous
+            return 8; // Miscellaneous Fatwas
         }
 
-        public async Task<List<CategoryDto>> GetTopLevelCategoriesAsync()
+        public List<CategoryHierarchy> GetCategoryHierarchy()
         {
-            try
-            {
-                var categories = await _dbContext.Database
-                    .GetCollection<CategoryDocument>("categories")
-                    .Find(c => c.ParentId == null)
-                    .Sort(Builders<CategoryDocument>.Sort.Ascending("id"))
-                    .ToListAsync();
-
-                return categories.Select(c => new CategoryDto
-                {
-                    Id = c.Id,
-                    Title = c.Title,
-                    ParentId = c.ParentId,
-                    Description = c.Description,
-                    FatwaCount = c.FatwaIds?.Count ?? 0,
-                    IsActive = c.IsActive
-                }).ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving top-level categories");
-                return new List<CategoryDto>();
-            }
+            return CategoryStructure;
         }
 
-        public async Task<List<CategoryDto>> GetChildCategoriesAsync(int parentId)
+        public async Task<List<CategoryHierarchy>> GetAllCategoriesAsync(string language = "ar")
         {
-            try
-            {
-                var categories = await _dbContext.Database
-                    .GetCollection<CategoryDocument>("categories")
-                    .Find(c => c.ParentId == parentId)
-                    .Sort(Builders<CategoryDocument>.Sort.Ascending("id"))
-                    .ToListAsync();
-
-                return categories.Select(c => new CategoryDto
-                {
-                    Id = c.Id,
-                    Title = c.Title,
-                    ParentId = c.ParentId,
-                    Description = c.Description,
-                    FatwaCount = c.FatwaIds?.Count ?? 0,
-                    IsActive = c.IsActive
-                }).ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving child categories");
-                return new List<CategoryDto>();
-            }
+            return CategoryStructure;
         }
 
-        public static bool IsValidCategory(string category)
+        public async Task<List<CategoryHierarchy>> GetTopLevelCategoriesAsync()
         {
-            return ValidCategories.Contains(category);
+            return CategoryStructure.Where(c => c.ParentId == null).ToList();
+        }
+
+        public async Task<List<CategoryHierarchy>> GetChildCategoriesAsync(int parentId)
+        {
+            var parent = CategoryStructure.FirstOrDefault(c => c.Id == parentId);
+            return parent?.Children ?? new List<CategoryHierarchy>();
         }
 
         public static List<string> GetValidCategoryNames()
         {
-            return ValidCategories.ToList();
+            return RealCategoryMapping.Keys.ToList();
         }
 
-        public async Task<object> GetFatwasInCategoryAsync(int categoryId, int page = 1, int pageSize = 20)
+        public List<CategoryHierarchy> GetCategoryHierarchy(string language)
+        {
+            // Clone the structure and add fatwa counts
+            var hierarchyWithCounts = CategoryStructure.Select(category => new CategoryHierarchy
+            {
+                Id = category.Id,
+                Title = category.Title,
+                TitleEn = category.TitleEn,
+                ParentId = category.ParentId,
+                FatwaCount = GetFatwaCountForCategory(category.Title),
+                Children = category.Children?.Select(child => new CategoryHierarchy
+                {
+                    Id = child.Id,
+                    Title = child.Title,
+                    TitleEn = child.TitleEn,
+                    ParentId = child.ParentId,
+                    FatwaCount = GetFatwaCountForCategory(child.Title),
+                    Children = child.Children
+                }).ToList()
+            }).ToList();
+
+            return hierarchyWithCounts;
+        }
+
+        private int GetFatwaCountForCategory(string categoryTitle)
         {
             try
             {
-                // Get the category and all its descendants
-                var category = await _dbContext.Database
-                    .GetCollection<CategoryDocument>("categories")
-                    .Find(c => c.Id == categoryId)
-                    .FirstOrDefaultAsync();
-
-                if (category == null)
-                {
-                    return new { fatwas = new List<object>(), totalCount = 0, page, pageSize, error = "Category not found" };
-                }
-
-                // Get all descendant category IDs (recursive)
-                var descendantIds = await GetAllDescendantIdsAsync(categoryId);
-                descendantIds.Add(categoryId); // Include the category itself
-
-                // Get all fatwas from this category and descendants
-                var allFatwaIds = new List<int>();
-                var categories = await _dbContext.Database
-                    .GetCollection<CategoryDocument>("categories")
-                    .Find(c => descendantIds.Contains(c.Id))
-                    .ToListAsync();
-
-                foreach (var cat in categories)
-                {
-                    if (cat.FatwaIds != null)
-                        allFatwaIds.AddRange(cat.FatwaIds);
-                }
-
-                // Remove duplicates and get unique fatwa IDs
-                var uniqueFatwaIds = allFatwaIds.Distinct().ToList();
-                var totalCount = uniqueFatwaIds.Count;
-
-                // Apply pagination
-                var paginatedFatwaIds = uniqueFatwaIds
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToList();
-
-                // Get the actual fatwa documents
-                var fatwas = await _dbContext.Fatwas
-                    .Find(f => paginatedFatwaIds.Contains(f.FatwaId) && f.IsActive)
-                    .ToListAsync();
-
-                // Transform to response format
-                var fatwaResults = fatwas.Select(f => new
-                {
-                    fatwaId = f.FatwaId,
-                    titleAr = f.TitleAr,
-                    titleEn = f.TitleEn,
-                    questionAr = f.QuestionAr,
-                    questionEn = f.QuestionEn,
-                    answerAr = f.AnswerAr,
-                    answerEn = f.AnswerEn,
-                    category = f.Category,
-                    tags = f.Tags,
-                    createdAt = f.CreatedAt,
-                    updatedAt = f.UpdatedAt
-                }).ToList();
-
-                return new
-                {
-                    fatwas = fatwaResults,
-                    totalCount,
-                    page,
-                    pageSize,
-                    totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
-                    categoryInfo = new
-                    {
-                        id = category.Id,
-                        title = category.Title,
-                        description = category.Description,
-                        descendantCount = descendantIds.Count - 1 // Exclude self
-                    }
-                };
+                Console.WriteLine($"GetFatwaCountForCategory called for: '{categoryTitle}'");
+                // Count fatwas for this category - using the actual field name from the database
+                var filter = Builders<Fatwa>.Filter.Eq("category", categoryTitle);
+                var count = (int)_context.Fatwas.CountDocuments(filter);
+                Console.WriteLine($"GetFatwaCountForCategory result for '{categoryTitle}': {count}");
+                return count;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error retrieving fatwas for category {categoryId}");
-                return new { error = "Internal server error", fatwas = new List<object>(), totalCount = 0 };
+                // Log the exception to see what's going wrong
+                Console.WriteLine($"GetFatwaCountForCategory Exception for '{categoryTitle}': {ex.Message}");
+                return 0;
             }
         }
 
-        private async Task<List<int>> GetAllDescendantIdsAsync(int categoryId)
+        public async Task InitializeCategoryStructureAsync()
         {
-            var descendants = new List<int>();
-            var children = await _dbContext.Database
-                .GetCollection<CategoryDocument>("categories")
-                .Find(c => c.ParentId == categoryId)
-                .ToListAsync();
+            // This method exists for compatibility but doesn't need to do anything
+            // since we're using static mappings
+            await Task.CompletedTask;
+        }
 
+        public async Task SyncCategoryFatwaRelationshipsAsync()
+        {
+            // This method exists for compatibility but doesn't need to do anything
+            // since we're using static mappings
+            await Task.CompletedTask;
+        }
+
+        public async Task<object> GetCategoryDiagnosticsAsync()
+        {
+            return new
+            {
+                TotalCategories = CategoryStructure.Count,
+                TotalMappings = RealCategoryMapping.Count,
+                MappingKeys = RealCategoryMapping.Keys.ToList()
+            };
+        }
+
+        public async Task<List<int>> GetAllFatwaIdsInCategoryAndSubcategoriesAsync(int categoryId)
+        {
+            try
+            {
+                var fatwaIds = new List<int>();
+                
+                // Get the category and all its children
+                var categoryNames = GetCategoryAndChildrenNames(categoryId);
+                
+                if (!categoryNames.Any())
+                {
+                    return fatwaIds;
+                }
+                
+                // Find all fatwas in these categories - using the actual field name from the database
+                var filter = Builders<Fatwa>.Filter.In("category", categoryNames);
+                
+                var projection = Builders<Fatwa>.Projection.Include(f => f.FatwaId);
+                var fatwas = await _context.Fatwas.Find(filter).Project(projection).ToListAsync();
+                
+                fatwaIds.AddRange(fatwas.Select(f => f["FatwaId"].AsInt32));
+                
+                return fatwaIds;
+            }
+            catch (Exception ex)
+            {
+                // Log error if you have logging
+                return new List<int>();
+            }
+        }
+        
+        private List<string> GetCategoryAndChildrenNames(int categoryId)
+        {
+            var categoryNames = new List<string>();
+            
+            // Find the category in the hierarchy
+            var category = FindCategoryById(categoryId);
+            if (category != null)
+            {
+                categoryNames.Add(category.Title);
+                
+                // Add all children names
+                categoryNames.AddRange(GetAllChildrenNames(category));
+            }
+            
+            return categoryNames;
+        }
+        
+        private CategoryHierarchy? FindCategoryById(int categoryId)
+        {
+            // Search in top-level categories
+            var topLevel = CategoryStructure.FirstOrDefault(c => c.Id == categoryId);
+            if (topLevel != null)
+            {
+                return topLevel;
+            }
+            
+            // Search in children
+            foreach (var parent in CategoryStructure)
+            {
+                var child = FindCategoryInChildren(parent.Children, categoryId);
+                if (child != null)
+                {
+                    return child;
+                }
+            }
+            
+            return null;
+        }
+        
+        private CategoryHierarchy? FindCategoryInChildren(List<CategoryHierarchy> children, int categoryId)
+        {
             foreach (var child in children)
             {
-                descendants.Add(child.Id);
-                // Recursively get descendants of this child
-                var childDescendants = await GetAllDescendantIdsAsync(child.Id);
-                descendants.AddRange(childDescendants);
+                if (child.Id == categoryId)
+                {
+                    return child;
+                }
+                
+                var grandChild = FindCategoryInChildren(child.Children, categoryId);
+                if (grandChild != null)
+                {
+                    return grandChild;
+                }
             }
+            
+            return null;
+        }
+        
+        private List<string> GetAllChildrenNames(CategoryHierarchy category)
+        {
+            var names = new List<string>();
+            
+            foreach (var child in category.Children)
+            {
+                names.Add(child.Title);
+                names.AddRange(GetAllChildrenNames(child));
+            }
+            
+            return names;
+        }
 
-            return descendants;
+        public async Task<List<Fatwa>> GetFatwasInCategoryAsync(int categoryId, int page = 1, int pageSize = 10)
+        {
+            try
+            {
+                // Get the category and all its children names
+                var categoryNames = GetCategoryAndChildrenNames(categoryId);
+                
+                if (!categoryNames.Any())
+                {
+                    return new List<Fatwa>();
+                }
+                
+                // Build filter for fatwas in these categories - using the actual field name from the database
+                var filter = Builders<Fatwa>.Filter.In("category", categoryNames);
+                
+                // Get fatwas with pagination
+                var fatwas = await _context.Fatwas
+                    .Find(filter)
+                    .Skip((page - 1) * pageSize)
+                    .Limit(pageSize)
+                    .ToListAsync();
+                
+                return fatwas;
+            }
+            catch (Exception ex)
+            {
+                // Log error if you have logging
+                return new List<Fatwa>();
+            }
+        }
+
+        public async Task<int> GetTotalFatwaCountInCategoryAsync(int categoryId)
+        {
+            try
+            {
+                // Get the category and all its children names
+                var categoryNames = GetCategoryAndChildrenNames(categoryId);
+                
+                if (!categoryNames.Any())
+                {
+                    return 0;
+                }
+                
+                // Build filter for fatwas in these categories - using the actual field name from the database
+                var filter = Builders<Fatwa>.Filter.In("category", categoryNames);
+                
+                // Count total fatwas
+                var count = await _context.Fatwas.CountDocumentsAsync(filter);
+                
+                return (int)count;
+            }
+            catch (Exception ex)
+            {
+                // Log error if you have logging
+                return 0;
+            }
         }
     }
 
-    public class CategoryDto
+    public class CategoryHierarchy
     {
         public int Id { get; set; }
-        public string Title { get; set; } = "";
+        public string Title { get; set; } = string.Empty;
+        public string TitleEn { get; set; } = string.Empty;
         public int? ParentId { get; set; }
-        public string Description { get; set; } = "";
-        public int FatwaCount { get; set; }
-        public bool IsActive { get; set; }
-    }
-
-    public class CategoryDocument
-    {
-        public int Id { get; set; }
-        public string Title { get; set; } = "";
-        public int? ParentId { get; set; }
-        public string Description { get; set; } = "";
-        public List<int>? FatwaIds { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
-        public bool IsActive { get; set; }
+        public int FatwaCount { get; set; } = 0;
+        public List<CategoryHierarchy> Children { get; set; } = new();
     }
 }

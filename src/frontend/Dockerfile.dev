@@ -1,0 +1,49 @@
+# =============================================================================
+# IFTAA Frontend Development Dockerfile
+# Optimized for development with hot reloading and debugging
+# =============================================================================
+
+FROM node:20-alpine
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Set working directory
+WORKDIR /app
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Change ownership to nodejs user
+RUN chown -R nextjs:nodejs /app
+USER nextjs
+
+# Expose the development port
+EXPOSE 3000
+
+# Set environment variables for development
+ENV NODE_ENV=development
+ENV VITE_API_BASE_URL=http://localhost:8080/api
+ENV VITE_APP_NAME="IFTAA Development"
+ENV VITE_APP_VERSION=dev
+
+# Add development-specific environment variables
+ENV VITE_DEV_TOOLS=true
+ENV VITE_HOT_RELOAD=true
+
+# Health check for development
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000 || exit 1
+
+# Start development server with hot reloading
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"]

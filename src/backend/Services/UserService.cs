@@ -53,7 +53,7 @@ namespace IFTAA_Project.Services
                 var user = await _users.Find(u => u.UserId == userId).FirstOrDefaultAsync();
                 return user;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Log the exception if you have logging configured
                 return null;

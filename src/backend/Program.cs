@@ -38,14 +38,32 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// 4. Configure HttpClient
+// 4. Configure CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:3000", 
+                "http://frontend:3000",
+                "http://127.0.0.1:3000",
+                "https://localhost:3000",
+                "http://iftaa-frontend-dev:3000"
+              )
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
+
+// 5. Configure HttpClient
 builder.Services.AddHttpClient();
 
-// 5. Configure Python service URL
+// 6. Configure Python service URL
 var pythonServiceUrl = builder.Configuration["PYTHON_AI_SERVICE_URL"] ?? "http://python-ai-service:5001";
 builder.Configuration["PythonServiceUrl"] = pythonServiceUrl;
 
-// 6. Register Custom Services
+// 7. Register Custom Services
 builder.Services.AddScoped<FatwaService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<CategoryService>();
@@ -113,6 +131,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -121,18 +140,43 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = Dat
 
 app.MapControllers();
 
-// Initialize database indexes on startup
+// Initialize database indexes and category relationships on startup
 using (var scope = app.Services.CreateScope())
 {
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    
+    // Initialize database indexes
     var dbSetupService = scope.ServiceProvider.GetRequiredService<DatabaseSetupService>();
     try
     {
         await dbSetupService.EnsureIndexesAsync();
+        logger.LogInformation("Database indexes created successfully");
     }
     catch (Exception ex)
     {
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         logger.LogWarning(ex, "Failed to create database indexes on startup - continuing anyway");
+    }
+
+    // Initialize categories and synchronize category-fatwa relationships
+    var categoryService = scope.ServiceProvider.GetRequiredService<CategoryService>();
+    try
+    {
+        // First, ensure category structure is initialized
+        var categoriesExist = (await categoryService.GetAllCategoriesAsync()).Any();
+        if (!categoriesExist)
+        {
+            logger.LogInformation("No categories found in database, initializing category structure...");
+            await categoryService.InitializeCategoryStructureAsync();
+            logger.LogInformation("Category structure initialized successfully");
+        }
+        
+        // Then synchronize category-fatwa relationships
+        await categoryService.SyncCategoryFatwaRelationshipsAsync();
+        logger.LogInformation("Category-fatwa relationships synchronized successfully");
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Failed to initialize categories or synchronize category-fatwa relationships on startup - continuing anyway");
     }
 }
 
