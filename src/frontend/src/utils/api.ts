@@ -40,7 +40,8 @@ class ApiClient {
   // Generic request method
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    skipAuthRedirect: boolean = false
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
     
@@ -54,8 +55,11 @@ class ApiClient {
 
       // Handle authentication errors
       if (response.status === 401) {
-        this.setToken(null);
-        window.location.href = '/login';
+        // Only redirect to login if not skipping auth redirect (for refresh/validate calls)
+        if (!skipAuthRedirect) {
+          this.setToken(null);
+          window.location.href = '/login';
+        }
         throw new Error('Authentication failed');
       }
 
@@ -81,37 +85,42 @@ class ApiClient {
   }
 
   // HTTP Methods
-  async get<T>(endpoint: string, params?: Record<string, string | number>): Promise<T> {
+  async get<T>(endpoint: string, params?: Record<string, string | number | undefined>, skipAuthRedirect: boolean = false): Promise<T> {
     let url = endpoint;
     if (params) {
       const searchParams = new URLSearchParams();
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
+        if (value !== undefined && value !== null && value !== '') {
+          // Special handling for categoryId to avoid NaN
+          if (key === 'categoryId' && isNaN(Number(value))) {
+            return; // Skip if categoryId is NaN
+          }
           searchParams.append(key, String(value));
         }
       });
       url += `?${searchParams.toString()}`;
     }
     
-    return this.request<T>(url, { method: 'GET' });
+    console.log('API Request URL:', `${this.baseURL}${url}`);
+    return this.request<T>(url, { method: 'GET' }, skipAuthRedirect);
   }
 
-  async post<T>(endpoint: string, data?: unknown): Promise<T> {
+  async post<T>(endpoint: string, data?: unknown, skipAuthRedirect: boolean = false): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined
-    });
+    }, skipAuthRedirect);
   }
 
-  async put<T>(endpoint: string, data?: unknown): Promise<T> {
+  async put<T>(endpoint: string, data?: unknown, skipAuthRedirect: boolean = false): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined
-    });
+    }, skipAuthRedirect);
   }
 
-  async delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'DELETE' });
+  async delete<T>(endpoint: string, skipAuthRedirect: boolean = false): Promise<T> {
+    return this.request<T>(endpoint, { method: 'DELETE' }, skipAuthRedirect);
   }
 }
 
@@ -124,7 +133,10 @@ export const authApi = {
     apiClient.post(API_ENDPOINTS.AUTH.LOGIN, credentials),
   
   validateToken: () => 
-    apiClient.post(API_ENDPOINTS.AUTH.VALIDATE),
+    apiClient.post(API_ENDPOINTS.AUTH.VALIDATE, undefined, true),
+  
+  refreshToken: () => 
+    apiClient.post(API_ENDPOINTS.AUTH.REFRESH, undefined, true),
   
   getCurrentUser: () => 
     apiClient.get(API_ENDPOINTS.AUTH.ME),
@@ -134,7 +146,7 @@ export const authApi = {
 };
 
 export const fatwaApi = {
-  search: (params: Record<string, string | number>) => 
+  search: (params: Record<string, string | number | undefined>) => 
     apiClient.get(API_ENDPOINTS.FATWA.SEARCH, params),
   
   getById: (id: number, language?: string) => 

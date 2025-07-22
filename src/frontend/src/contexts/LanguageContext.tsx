@@ -463,17 +463,21 @@ interface LanguageContextType extends LanguageState {
 // Initial State
 const getInitialLanguage = (): Language => {
   const saved = storage.get<Language>('language');
+  console.log('🌐 Getting initial language from storage:', saved);
   if (saved && ['ar', 'en'].includes(saved)) {
+    console.log('✅ Using saved language:', saved);
     return saved;
   }
   
   // Try to detect from environment or browser  
   const envLang = 'ar' as Language;
   if (envLang && ['ar', 'en'].includes(envLang)) {
+    console.log('✅ Using env language:', envLang);
     return envLang;
   }
   
   // Default to Arabic
+  console.log('✅ Using default language: ar');
   return 'ar';
 };
 

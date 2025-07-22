@@ -173,7 +173,23 @@ namespace IFTAA_Project.Services
         public async Task<List<CategoryHierarchy>> GetChildCategoriesAsync(int parentId)
         {
             var parent = CategoryStructure.FirstOrDefault(c => c.Id == parentId);
-            return parent?.Children ?? new List<CategoryHierarchy>();
+            if (parent?.Children == null)
+            {
+                return new List<CategoryHierarchy>();
+            }
+
+            // Clone the children and add fatwa counts
+            var childrenWithCounts = parent.Children.Select(child => new CategoryHierarchy
+            {
+                Id = child.Id,
+                Title = child.Title,
+                TitleEn = child.TitleEn,
+                ParentId = child.ParentId,
+                FatwaCount = GetFatwaCountForCategory(child.Title),
+                Children = child.Children
+            }).ToList();
+
+            return childrenWithCounts;
         }
 
         public static List<string> GetValidCategoryNames()
@@ -209,17 +225,27 @@ namespace IFTAA_Project.Services
         {
             try
             {
-                Console.WriteLine($"GetFatwaCountForCategory called for: '{categoryTitle}'");
-                // Count fatwas for this category - using the actual field name from the database
-                var filter = Builders<Fatwa>.Filter.Eq("category", categoryTitle);
-                var count = (int)_context.Fatwas.CountDocuments(filter);
-                Console.WriteLine($"GetFatwaCountForCategory result for '{categoryTitle}': {count}");
-                return count;
+                // Find the category in the hierarchy to check if it has children
+                var category = FindCategoryByTitle(categoryTitle);
+                
+                if (category != null && category.Children != null && category.Children.Any())
+                {
+                    // For parent categories, count all fatwas in child categories
+                    var childTitles = category.Children.Select(c => c.Title).ToList();
+                    var filter = Builders<Fatwa>.Filter.In("category", childTitles);
+                    var count = (int)_context.Fatwas.CountDocuments(filter);
+                    return count;
+                }
+                else
+                {
+                    // For leaf categories, count fatwas directly assigned to this category
+                    var filter = Builders<Fatwa>.Filter.Eq("category", categoryTitle);
+                    var count = (int)_context.Fatwas.CountDocuments(filter);
+                    return count;
+                }
             }
             catch (Exception ex)
             {
-                // Log the exception to see what's going wrong
-                Console.WriteLine($"GetFatwaCountForCategory Exception for '{categoryTitle}': {ex.Message}");
                 return 0;
             }
         }
@@ -263,23 +289,32 @@ namespace IFTAA_Project.Services
                 }
                 
                 // Find all fatwas in these categories - using the actual field name from the database
-                var filter = Builders<Fatwa>.Filter.In("category", categoryNames);
+                var filter = Builders<Fatwa>.Filter.In("Category", categoryNames);
                 
-                var projection = Builders<Fatwa>.Projection.Include(f => f.FatwaId);
-                var fatwas = await _context.Fatwas.Find(filter).Project(projection).ToListAsync();
+                // Use the Fatwa model directly instead of projection to avoid field name issues
+                var fatwas = await _context.Fatwas.Find(filter).ToListAsync();
                 
-                fatwaIds.AddRange(fatwas.Select(f => f["FatwaId"].AsInt32));
+                if (fatwas.Any())
+                {
+                    try
+                    {
+                        fatwaIds.AddRange(fatwas.Select(f => f.FatwaId));
+                    }
+                    catch (Exception ex2)
+                    {
+                        throw;
+                    }
+                }
                 
                 return fatwaIds;
             }
             catch (Exception ex)
             {
-                // Log error if you have logging
                 return new List<int>();
             }
         }
         
-        private List<string> GetCategoryAndChildrenNames(int categoryId)
+        public List<string> GetCategoryAndChildrenNames(int categoryId)
         {
             var categoryNames = new List<string>();
             
@@ -348,6 +383,47 @@ namespace IFTAA_Project.Services
             }
             
             return names;
+        }
+        
+        private CategoryHierarchy? FindCategoryByTitle(string title)
+        {
+            // Search in top-level categories
+            var topLevel = CategoryStructure.FirstOrDefault(c => c.Title == title);
+            if (topLevel != null)
+            {
+                return topLevel;
+            }
+            
+            // Search in children
+            foreach (var parent in CategoryStructure)
+            {
+                var child = FindCategoryByTitleInChildren(parent.Children, title);
+                if (child != null)
+                {
+                    return child;
+                }
+            }
+            
+            return null;
+        }
+        
+        private CategoryHierarchy? FindCategoryByTitleInChildren(List<CategoryHierarchy> children, string title)
+        {
+            foreach (var child in children)
+            {
+                if (child.Title == title)
+                {
+                    return child;
+                }
+                
+                var grandChild = FindCategoryByTitleInChildren(child.Children, title);
+                if (grandChild != null)
+                {
+                    return grandChild;
+                }
+            }
+            
+            return null;
         }
 
         public async Task<List<Fatwa>> GetFatwasInCategoryAsync(int categoryId, int page = 1, int pageSize = 10)

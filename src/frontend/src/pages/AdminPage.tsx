@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '@contexts/LanguageContext';
 import { useAuth } from '@contexts/AuthContext';
 import { fatwaApi, categoryApi, systemApi } from '@utils/api';
-import type { Fatwa, PaginatedSearchResponse, SystemStatus } from '@types/index';
+import type { Fatwa, PaginatedSearchResponse, SystemStatus, CategoryHierarchy } from '@types/index';
 import { LoadingSpinner } from '@components/ui';
 import './AdminPage.css';
 
@@ -17,10 +17,13 @@ export const AdminPage: React.FC = () => {
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [systemStats, setSystemStats] = useState<{totalFatwas: number, totalCategories: number} | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'fatwas' | 'create' | 'categories'>('overview');
-  const [categorizedFatwas, setCategorizedFatwas] = useState<Record<string, Fatwa[]>>({});
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [categoryFatwas, setCategoryFatwas] = useState<Record<number, Fatwa[]>>({});
+  const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
+  const [loadingCategoryId, setLoadingCategoryId] = useState<number | null>(null);
   const [editingFatwa, setEditingFatwa] = useState<Fatwa | null>(null);
   const [unmappedCategoriesInfo, setUnmappedCategoriesInfo] = useState<{category: string; count: number; examples: string[]}[]>([]);
+  const [categories, setCategories] = useState<CategoryHierarchy[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
 
   // Define the exact category hierarchy as requested
   const categoryHierarchy = [
@@ -773,6 +776,28 @@ export const AdminPage: React.FC = () => {
     loadSystemStats();
   }, []);
 
+  useEffect(() => {
+    if (activeTab === 'categories') {
+      console.log('🎯 Admin page - categories tab activated, loading categories and fatwas...');
+      loadFatwas(); // This loads both categories and categorized fatwas
+    }
+  }, [activeTab, language]);
+
+  const loadCategories = async () => {
+    try {
+      setIsLoadingCategories(true);
+      console.log('🔄 Loading categories for language:', language);
+      const response = await categoryApi.getHierarchy(language) as CategoryHierarchy[];
+      console.log('📋 Categories loaded:', response);
+      console.log('📋 First category children:', response[0]?.Children);
+      setCategories(response);
+    } catch (error) {
+      console.error('Failed to load categories:', error);
+    } finally {
+      setIsLoadingCategories(false);
+    }
+  };
+
   const loadSystemStatus = async () => {
     try {
       const [mongoStatus, milvusStatus] = await Promise.all([
@@ -810,108 +835,24 @@ export const AdminPage: React.FC = () => {
     try {
       setIsLoadingFatwas(true);
       
-      // Use the same API as main page - get categories with correct fatwa counts from backend
-      const [allCategoriesResponse, fatwaResponse] = await Promise.all([
-        categoryApi.getHierarchy(language), // This returns the full hierarchy with correct fatwa counts
-        fatwaApi.getAll({
-          page: 1,
-          pageSize: 5000, // Load all fatwas for display
-          language
-        }) as Promise<PaginatedSearchResponse>
-      ]);
+      // Get categories hierarchy (same as main page)
+      const categoriesResponse = await categoryApi.getHierarchy(language);
+      setCategories(categoriesResponse || []);
+      
+      // Get all fatwas for overview only
+      const fatwaResponse = await fatwaApi.getAll({
+        page: 1,
+        pageSize: 5000,
+        language
+      }) as PaginatedSearchResponse;
       
       const allFatwas = fatwaResponse.Results?.map(r => r.Fatwa) || [];
       setFatwas(allFatwas);
       
-      // Use backend categorization instead of frontend logic
-      const categorized: Record<string, Fatwa[]> = {};
-      
-      // Initialize all categories from hierarchy
-      categoryHierarchy.forEach(parent => {
-        categorized[parent.name] = [];
-        parent.children.forEach(child => {
-          categorized[child] = [];
-        });
-      });
-      
-      // Add "غير مصنف" category for any remaining uncategorized fatwas
-      categorized['غير مصنف'] = [];
-      
-      console.log('=== USING BACKEND CATEGORIZATION ===');
-      console.log('Backend categories received:', allCategoriesResponse?.length || 0);
-      console.log('Total fatwas:', allFatwas.length);
-      
-      // Get fatwas for each category using backend API - iterate through hierarchy
-      if (Array.isArray(allCategoriesResponse)) {
-        // Flatten hierarchy to get all categories (parent + children)
-        const allCategories: any[] = [];
-        allCategoriesResponse.forEach(parent => {
-          allCategories.push(parent);
-          if (parent.Children) {
-            allCategories.push(...parent.Children);
-          }
-        });
-        
-        for (const category of allCategories) {
-          try {
-            // For categories that exist in our hierarchy, get their fatwas from backend
-            if (categorized.hasOwnProperty(category.Title)) {
-              const categoryFatwasResponse = await categoryApi.getFatwas(category.Id, { page: 1, pageSize: 5000 });
-              const categoryFatwas = categoryFatwasResponse.Results?.map((r: any) => r.Fatwa) || [];
-              categorized[category.Title] = categoryFatwas;
-              
-              console.log(`${category.Title}: ${categoryFatwas.length} fatwas (backend count: ${category.FatwaCount || 0})`);
-            }
-          } catch (error) {
-            console.warn(`Failed to load fatwas for category ${category.Title}:`, error);
-            // Fallback to empty array
-            if (categorized.hasOwnProperty(category.Title)) {
-              categorized[category.Title] = [];
-            }
-          }
-        }
-      }
-      
-      // Find any fatwas not categorized by backend
-      const categorizedFatwaIds = new Set();
-      Object.values(categorized).forEach(fatwas => {
-        fatwas.forEach(fatwa => categorizedFatwaIds.add(fatwa.FatwaId));
-      });
-      
-      const uncategorizedFatwas = allFatwas.filter(fatwa => !categorizedFatwaIds.has(fatwa.FatwaId));
-      categorized['غير مصنف'] = uncategorizedFatwas;
-      
-      console.log('Uncategorized fatwas found:', uncategorizedFatwas.length);
-      
-      // Debug: Show what categories the uncategorized fatwas have
-      if (uncategorizedFatwas.length > 0) {
-        console.log('=== UNCATEGORIZED FATWAS ANALYSIS ===');
-        const uncategorizedByCategory = uncategorizedFatwas.reduce((acc, fatwa) => {
-          const category = fatwa.Category?.trim() || 'No Category';
-          if (!acc[category]) acc[category] = [];
-          acc[category].push(fatwa);
-          return acc;
-        }, {} as Record<string, typeof uncategorizedFatwas>);
-        
-        const sortedCategories = Object.entries(uncategorizedByCategory)
-          .sort(([,a], [,b]) => b.length - a.length)
-          .slice(0, 20); // Top 20 categories
-          
-        console.log('Top categories in uncategorized fatwas:');
-        sortedCategories.forEach(([category, fatwas]) => {
-          console.log(`"${category}": ${fatwas.length} fatwas`);
-          console.log('Sample titles:', fatwas.slice(0, 2).map(f => f.TitleAr || f.Title));
-          console.log('---');
-        });
-      }
-      
-      console.log('Backend categorization completed successfully');
-      
-      setCategorizedFatwas(categorized);
     } catch (error) {
       console.error('Failed to load categories and fatwas:', error);
       setFatwas([]);
-      setCategorizedFatwas({});
+      setCategories([]);
     } finally {
       setIsLoadingFatwas(false);
     }
@@ -950,8 +891,19 @@ export const AdminPage: React.FC = () => {
     
     try {
       await fatwaApi.delete(fatwaId);
-      // Reload fatwas to update the categorized view
-      loadFatwas();
+      
+      // Update all category fatwas that might contain this fatwa
+      const updatedCategoryFatwas = { ...categoryFatwas };
+      for (const categoryId in updatedCategoryFatwas) {
+        updatedCategoryFatwas[categoryId] = updatedCategoryFatwas[categoryId].filter(
+          fatwa => fatwa.FatwaId !== fatwaId
+        );
+      }
+      setCategoryFatwas(updatedCategoryFatwas);
+      
+      // Also update the main fatwas list
+      setFatwas(prev => prev.filter(fatwa => fatwa.FatwaId !== fatwaId));
+      
       alert(t('fatwaDeleted'));
     } catch (error) {
       console.error('Failed to delete fatwa:', error);
@@ -967,7 +919,21 @@ export const AdminPage: React.FC = () => {
     try {
       await fatwaApi.update(updatedFatwa.FatwaId, updatedFatwa);
       setEditingFatwa(null);
-      loadFatwas(); // Reload to update categorized view
+      
+      // Update the fatwa in all category fatwas that might contain it
+      const updatedCategoryFatwas = { ...categoryFatwas };
+      for (const categoryId in updatedCategoryFatwas) {
+        updatedCategoryFatwas[categoryId] = updatedCategoryFatwas[categoryId].map(
+          fatwa => fatwa.FatwaId === updatedFatwa.FatwaId ? updatedFatwa : fatwa
+        );
+      }
+      setCategoryFatwas(updatedCategoryFatwas);
+      
+      // Also update the main fatwas list
+      setFatwas(prev => prev.map(fatwa => 
+        fatwa.FatwaId === updatedFatwa.FatwaId ? updatedFatwa : fatwa
+      ));
+      
       alert('تم تحديث الفتوى بنجاح');
     } catch (error) {
       console.error('Failed to update fatwa:', error);
@@ -975,12 +941,30 @@ export const AdminPage: React.FC = () => {
     }
   };
 
-  const toggleCategory = (categoryName: string) => {
+  const loadCategoryFatwas = async (categoryId: number) => {
+    try {
+      setLoadingCategoryId(categoryId);
+      const response = await categoryApi.getFatwas(categoryId, { language }) as PaginatedSearchResponse;
+      const fatwas = response.Results?.map(r => r.Fatwa) || [];
+      setCategoryFatwas(prev => ({ ...prev, [categoryId]: fatwas }));
+    } catch (error) {
+      console.error(`Failed to load fatwas for category ${categoryId}:`, error);
+      setCategoryFatwas(prev => ({ ...prev, [categoryId]: [] }));
+    } finally {
+      setLoadingCategoryId(null);
+    }
+  };
+
+  const toggleCategory = async (categoryId: number) => {
     const newExpanded = new Set(expandedCategories);
-    if (newExpanded.has(categoryName)) {
-      newExpanded.delete(categoryName);
+    if (newExpanded.has(categoryId)) {
+      newExpanded.delete(categoryId);
     } else {
-      newExpanded.add(categoryName);
+      newExpanded.add(categoryId);
+      // Load fatwas for this category if not already loaded
+      if (!categoryFatwas[categoryId]) {
+        await loadCategoryFatwas(categoryId);
+      }
     }
     setExpandedCategories(newExpanded);
   };
@@ -1060,12 +1044,12 @@ export const AdminPage: React.FC = () => {
               required
             >
               <option value="">اختر التصنيف</option>
-              {categoryHierarchy.map(parent => (
-                <optgroup key={parent.name} label={parent.name}>
-                  <option value={parent.name}>{parent.name}</option>
-                  {parent.children.map(child => (
-                    <option key={child} value={child}>
-                      ↳ {child}
+              {categories.map(parent => (
+                <optgroup key={parent.Id} label={language === 'en' && parent.TitleEn ? parent.TitleEn : parent.Title}>
+                  <option value={parent.Title}>{language === 'en' && parent.TitleEn ? parent.TitleEn : parent.Title}</option>
+                  {parent.Children?.map(child => (
+                    <option key={child.Id} value={child.Title}>
+                      ↳ {language === 'en' && child.TitleEn ? child.TitleEn : child.Title}
                     </option>
                   ))}
                 </optgroup>
@@ -1202,33 +1186,34 @@ export const AdminPage: React.FC = () => {
         </div>
       ) : (
         <div className="category-tree">
-          {categoryHierarchy.map(parentCategory => (
-            <div key={parentCategory.name} className="category-group">
+          {categories.map(category => (
+            <div key={category.Id} className="category-group">
+              {/* Main Category */}
               <div 
-                className="parent-category"
-                onClick={() => toggleCategory(parentCategory.name)}
+                className="category-header clickable"
+                onClick={() => toggleCategory(category.Id)}
               >
-                <div className="category-header">
-                  <span className={`expand-icon ${expandedCategories.has(parentCategory.name) ? 'expanded' : ''}`}>
-                    {parentCategory.children.length > 0 ? '▶' : '📁'}
-                  </span>
-                  <h3>{parentCategory.name}</h3>
-                  <span className="fatwa-count">
-                    ({categorizedFatwas[parentCategory.name]?.length || 0})
-                  </span>
-                </div>
+                <span className={`expand-icon ${expandedCategories.has(category.Id) ? 'expanded' : ''}`}>
+                  ▶
+                </span>
+                <h3>{language === 'en' && category.TitleEn ? category.TitleEn : category.Title}</h3>
+                <span className="fatwa-count">
+                  ({category.FatwaCount || 0} {language === 'ar' ? 'فتوى' : 'fatwas'})
+                </span>
+                {loadingCategoryId === category.Id && <div className="loading-spinner small">⌛</div>}
               </div>
               
-              {expandedCategories.has(parentCategory.name) && (
+              {/* Category Fatwas */}
+              {expandedCategories.has(category.Id) && (
                 <div className="category-content">
-                  {/* Parent category fatwas */}
-                  {categorizedFatwas[parentCategory.name]?.map(fatwa => (
+                  {categoryFatwas[category.Id]?.map(fatwa => (
                     <div key={fatwa.FatwaId} className="fatwa-item">
                       <div className="fatwa-info">
-                        <h4>{fatwa.TitleAr || fatwa.Title}</h4>
-                        <p className="fatwa-id">رقم الفتوى: {fatwa.FatwaId}</p>
+                        <h4>{language === 'en' ? (fatwa.TitleEn || fatwa.Title) : (fatwa.TitleAr || fatwa.Title)}</h4>
+                        <p className="fatwa-id">ID: {fatwa.FatwaId}</p>
+                        <p className="fatwa-category">{t('category')}: {fatwa.Category}</p>
                         <p className="fatwa-date">
-                          {new Date(fatwa.CreatedAt).toLocaleDateString('ar-SA')}
+                          {new Date(fatwa.CreatedAt).toLocaleDateString(language === 'en' ? 'en-US' : 'ar-SA')}
                         </p>
                       </div>
                       <div className="fatwa-actions">
@@ -1236,49 +1221,59 @@ export const AdminPage: React.FC = () => {
                           onClick={() => navigate(`/fatwa/${fatwa.FatwaId}`)}
                           className="action-btn small view"
                         >
-                          👁 عرض
+                          👁 {t('view')}
                         </button>
                         <button 
                           onClick={() => handleEditFatwa(fatwa)}
                           className="action-btn small edit"
                         >
-                          ✏️ تعديل
+                          ✏️ {t('edit')}
                         </button>
                         <button 
                           onClick={() => handleDeleteFatwa(fatwa.FatwaId)}
                           className="action-btn small danger"
                         >
-                          🗑 حذف
+                          🗑 {t('delete')}
                         </button>
                       </div>
                     </div>
                   ))}
-                  
-                  {/* Child categories */}
-                  {parentCategory.children.map(childCategory => (
-                    <div key={childCategory} className="child-category">
+                  {categoryFatwas[category.Id]?.length === 0 && (
+                    <p className="no-fatwas">{t('noFatwasInCategory')}</p>
+                  )}
+                </div>
+              )}
+              
+              {/* Child Categories */}
+              {category.Children && category.Children.length > 0 && (
+                <div className="subcategories-section">
+                  {category.Children.map(child => (
+                    <div key={child.Id} className="subcategory-group">
                       <div 
-                        className="child-category-header"
-                        onClick={() => toggleCategory(childCategory)}
+                        className="subcategory-header clickable"
+                        onClick={() => toggleCategory(child.Id)}
                       >
-                        <span className={`expand-icon ${expandedCategories.has(childCategory) ? 'expanded' : ''}`}>
+                        <span className={`expand-icon ${expandedCategories.has(child.Id) ? 'expanded' : ''}`}>
                           ▶
                         </span>
-                        <h4>{childCategory}</h4>
+                        <h4>{language === 'en' && child.TitleEn ? child.TitleEn : child.Title}</h4>
                         <span className="fatwa-count">
-                          ({categorizedFatwas[childCategory]?.length || 0})
+                          ({child.FatwaCount || 0} {language === 'ar' ? 'فتوى' : 'fatwas'})
                         </span>
+                        {loadingCategoryId === child.Id && <div className="loading-spinner small">⌛</div>}
                       </div>
                       
-                      {expandedCategories.has(childCategory) && (
-                        <div className="child-fatwas">
-                          {categorizedFatwas[childCategory]?.map(fatwa => (
+                      {/* Subcategory Fatwas */}
+                      {expandedCategories.has(child.Id) && (
+                        <div className="subcategory-content">
+                          {categoryFatwas[child.Id]?.map(fatwa => (
                             <div key={fatwa.FatwaId} className="fatwa-item child">
                               <div className="fatwa-info">
-                                <h4>{fatwa.TitleAr || fatwa.Title}</h4>
-                                <p className="fatwa-id">رقم الفتوى: {fatwa.FatwaId}</p>
+                                <h4>{language === 'en' ? (fatwa.TitleEn || fatwa.Title) : (fatwa.TitleAr || fatwa.Title)}</h4>
+                                <p className="fatwa-id">ID: {fatwa.FatwaId}</p>
+                                <p className="fatwa-category">{t('category')}: {fatwa.Category}</p>
                                 <p className="fatwa-date">
-                                  {new Date(fatwa.CreatedAt).toLocaleDateString('ar-SA')}
+                                  {new Date(fatwa.CreatedAt).toLocaleDateString(language === 'en' ? 'en-US' : 'ar-SA')}
                                 </p>
                               </div>
                               <div className="fatwa-actions">
@@ -1286,23 +1281,26 @@ export const AdminPage: React.FC = () => {
                                   onClick={() => navigate(`/fatwa/${fatwa.FatwaId}`)}
                                   className="action-btn small view"
                                 >
-                                  👁 عرض
+                                  👁 {t('view')}
                                 </button>
                                 <button 
                                   onClick={() => handleEditFatwa(fatwa)}
                                   className="action-btn small edit"
                                 >
-                                  ✏️ تعديل
+                                  ✏️ {t('edit')}
                                 </button>
                                 <button 
                                   onClick={() => handleDeleteFatwa(fatwa.FatwaId)}
                                   className="action-btn small danger"
                                 >
-                                  🗑 حذف
+                                  🗑 {t('delete')}
                                 </button>
                               </div>
                             </div>
                           ))}
+                          {categoryFatwas[child.Id]?.length === 0 && (
+                            <p className="no-fatwas">{t('noFatwasInCategory')}</p>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1311,90 +1309,6 @@ export const AdminPage: React.FC = () => {
               )}
             </div>
           ))}
-          
-          {/* Uncategorized fatwas */}
-          {categorizedFatwas['غير مصنف']?.length > 0 && (
-            <div className="category-group uncategorized">
-              <div 
-                className="parent-category"
-                onClick={() => toggleCategory('غير مصنف')}
-              >
-                <div className="category-header">
-                  <span className={`expand-icon ${expandedCategories.has('غير مصنف') ? 'expanded' : ''}`}>
-                    ▶
-                  </span>
-                  <h3>غير مصنف</h3>
-                  <span className="fatwa-count">
-                    ({categorizedFatwas['غير مصنف']?.length || 0})
-                  </span>
-                </div>
-              </div>
-              
-              {expandedCategories.has('غير مصنف') && (
-                <div className="category-content">
-                  {categorizedFatwas['غير مصنف']?.map(fatwa => (
-                    <div key={fatwa.FatwaId} className="fatwa-item">
-                      <div className="fatwa-info">
-                        <h4>{fatwa.TitleAr || fatwa.Title}</h4>
-                        <p className="fatwa-id">رقم الفتوى: {fatwa.FatwaId}</p>
-                        <p className="fatwa-category">الفئة: {fatwa.Category || 'غير محدد'}</p>
-                        <p className="fatwa-date">
-                          {new Date(fatwa.CreatedAt).toLocaleDateString('ar-SA')}
-                        </p>
-                      </div>
-                      <div className="fatwa-actions">
-                        <button 
-                          onClick={() => navigate(`/fatwa/${fatwa.FatwaId}`)}
-                          className="action-btn small view"
-                        >
-                          👁 عرض
-                        </button>
-                        <button 
-                          onClick={() => handleEditFatwa(fatwa)}
-                          className="action-btn small edit"
-                        >
-                          ✏️ تعديل
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteFatwa(fatwa.FatwaId)}
-                          className="action-btn small danger"
-                        >
-                          🗑 حذف
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-          
-          {/* Debug panel for unmapped categories */}
-          {expandedCategories.has('debug-unmapped') && unmappedCategoriesInfo.length > 0 && (
-            <div className="debug-panel">
-              <h3>🔍 تحليل الفئات غير المصنفة</h3>
-              <p>إجمالي الفئات غير المصنفة: {unmappedCategoriesInfo.length}</p>
-              <div className="unmapped-categories-list">
-                {unmappedCategoriesInfo.slice(0, 15).map((item, index) => (
-                  <div key={index} className="unmapped-category-item">
-                    <div className="category-name">"{item.category}" ({item.count} فتوى)</div>
-                    <div className="category-examples">
-                      أمثلة: {item.examples.join(' • ')}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="debug-note">
-                تحقق من وحدة التحكم في المتصفح (F12) لمزيد من التفاصيل
-              </p>
-            </div>
-          )}
-          
-          {fatwas.length === 0 && (
-            <div className="empty-state">
-              <p>{t('noFatwasFound')}</p>
-            </div>
-          )}
         </div>
       )}
       
@@ -1429,33 +1343,119 @@ export const AdminPage: React.FC = () => {
     </div>
   );
 
+  const renderCategoryCard = (category: CategoryHierarchy) => {
+    console.log('🏷️ Rendering category:', category.Title, 'TitleEn:', category.TitleEn, 'Children count:', category.Children?.length || 0);
+    return (
+    <div 
+      key={category.Id} 
+      className="group relative bg-white hover:bg-islamic-ivory rounded-xl border-2 border-neutral-200 hover:border-islamic-gold transition-all duration-300 shadow-md hover:shadow-xl overflow-hidden"
+    >
+      {/* Islamic pattern overlay */}
+      <div className="absolute inset-0 opacity-5 bg-gradient-to-br from-islamic-gold to-islamic-blue"></div>
+      
+      {/* Main category title */}
+      <div className="relative z-10 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className={`text-xl font-bold text-islamic-blue group-hover:text-islamic-gold transition-colors ${
+            isRTL ? 'text-right' : 'text-left'
+          }`}>
+            {language === 'ar' ? category.Title : (category.TitleEn || category.Title)}
+          </h3>
+          <div className="w-8 h-8 rounded-full bg-islamic-gold/10 flex items-center justify-center group-hover:bg-islamic-gold group-hover:text-white transition-all">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zm0 2h10v7h-2l-1-2H6l-1 2H3V5z" clipRule="evenodd" />
+            </svg>
+          </div>
+        </div>
+        
+        {/* Fatwa count display */}
+        <div className="flex items-center justify-between text-sm text-neutral-600 mb-3">
+          <span className="flex items-center gap-1">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            {category.FatwaCount || 0} {language === 'ar' ? 'فتوى' : 'fatwas'}
+          </span>
+          {category.Children && category.Children.length > 0 && (
+            <span className="flex items-center gap-1 text-islamic-gold">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+              {category.Children.length} {language === 'ar' ? 'فئة فرعية' : 'subcategories'}
+            </span>
+          )}
+        </div>
+
+        {/* Children subcategories */}
+        {category.Children && category.Children.length > 0 && (
+          <div className="space-y-2">
+            <div className="h-px bg-gradient-to-r from-islamic-gold/30 to-transparent mb-3"></div>
+            <div className="text-xs text-neutral-500 mb-2 font-medium">
+              {language === 'ar' ? 'الفئات الفرعية:' : 'Subcategories:'}
+            </div>
+            <div className="grid gap-2">
+              {category.Children.map(child => (
+                <div 
+                  key={child.Id} 
+                  className={`w-full px-3 py-2 text-sm bg-neutral-50 hover:bg-islamic-gold/10 rounded-lg border border-neutral-200 hover:border-islamic-gold/30 transition-all duration-200 ${
+                    isRTL ? 'text-right' : 'text-left'
+                  } text-neutral-700 hover:text-islamic-blue font-medium cursor-default`}
+                >
+                  <span className="flex items-center justify-between">
+                    <span>{language === 'ar' ? child.Title : (child.TitleEn || child.Title)}</span>
+                    <span className="text-xs text-neutral-500">
+                      {child.FatwaCount || 0} {language === 'ar' ? 'فتوى' : 'fatwas'}
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+  };
+
   const renderCategoryManagement = () => (
     <div className="category-management">
       <div className="section-header">
-        <h2>{t('categoryManagement')}</h2>
+        <h2>{language === 'ar' ? 'إدارة الفتاوى' : 'Fatwa Management'}</h2>
+        <p className="section-description">
+          {language === 'ar' 
+            ? 'عرض جميع التصنيفات والفئات الفرعية المتاحة في النظام'
+            : 'View all categories and subcategories available in the system'
+          }
+        </p>
       </div>
       
-      <div className="coming-soon-advanced">
-        <div className="coming-soon-content">
-          <div className="coming-soon-icon">🚧</div>
-          <h3>إدارة التصنيفات</h3>
-          <p className="coming-soon-text">
-            هذه الميزة قيد التطوير حالياً وستكون متاحة قريباً
-          </p>
-          <div className="coming-soon-features">
-            <h4>الميزات القادمة:</h4>
-            <ul>
-              <li>✨ إنشاء وتعديل التصنيفات</li>
-              <li>🔗 ربط الفتاوى بالتصنيفات</li>
-              <li>📊 إحصائيات التصنيفات</li>
-              <li>🎯 إدارة التسلسل الهرمي</li>
-            </ul>
-          </div>
-          <p className="coming-soon-note">
-            في الوقت الحالي، يمكن استخدام إدارة الفتاوى لتعديل تصنيف أي فتوى
+      {isLoadingCategories ? (
+        <div className="loading-categories">
+          <LoadingSpinner />
+          <p className="mt-4 text-neutral-600">
+            {language === 'ar' ? 'جاري تحميل التصنيفات...' : 'Loading categories...'}
           </p>
         </div>
-      </div>
+      ) : (
+        <div className="categories-grid">
+          {categories.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {categories.map(renderCategoryCard)}
+            </div>
+          ) : (
+            <div className="no-categories">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-neutral-100 flex items-center justify-center">
+                <svg className="w-8 h-8 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+              </div>
+              <p className="text-lg text-neutral-600 text-center">
+                {language === 'ar' ? 'لا توجد تصنيفات متاحة' : 'No categories available'}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 

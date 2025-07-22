@@ -246,90 +246,31 @@ namespace IFTAA_Project.Services
 
         public async Task<PaginatedSearchResponseDto> SearchFatwasAsync(string query, string language = "", int page = 1, int pageSize = 10, int? categoryId = null)
         {
-            // If categoryId is provided, get fatwas from that category and descendants first
-            List<int>? categoryFatwaIds = null;
-            
             try
             {
                 // Default to Arabic if language not specified
                 language = string.IsNullOrEmpty(language) ? "ar" : language;
-
-                // If categoryId is provided, get all fatwa IDs from category and ALL subcategories
+                
+                // Get category names for filtering if categoryId is provided
+                List<string>? categoryNames = null;
                 if (categoryId.HasValue)
                 {
-                    categoryFatwaIds = await _categoryService.GetAllFatwaIdsInCategoryAndSubcategoriesAsync(categoryId.Value);
-                    _logger.LogInformation($"Category-specific search: Found {categoryFatwaIds.Count} fatwas in category {categoryId.Value} and its subcategories");
+                    categoryNames = GetCategoryAndChildrenNames(categoryId.Value);
                 }
                 
-                // If query is empty or null, use fallback search directly with category filtering
-                if (string.IsNullOrWhiteSpace(query))
-                {
-                    return await FallbackTextSearchAsync("", language, page, pageSize, categoryFatwaIds);
-                }
-
-                // Build search URL for semantic search
-                var searchUrl = $"{_pythonServiceUrl}/api/search?query={Uri.EscapeDataString(query)}&lang={language}&page={page}&page_size={pageSize}";
-
-                var response = await _httpClient.GetAsync(searchUrl);
-                
-                if (!response.IsSuccessStatusCode)
-                {
-                    _logger.LogError($"Failed to search fatwas: {response.StatusCode}");
-                    return await FallbackTextSearchAsync(query, language, page, pageSize, categoryFatwaIds);
-                }
-
-                var jsonString = await response.Content.ReadAsStringAsync();
-                var pythonResult = JsonConvert.DeserializeObject<PythonSearchResult>(jsonString);
-                
-                if (pythonResult?.results == null)
-                {
-                    return new PaginatedSearchResponseDto
-                    {
-                        Results = new List<SearchResultDto>(),
-                        TotalResults = 0,
-                        Page = page,
-                        PageSize = pageSize
-                    };
-                }
-
-                // Convert Python results to our DTO format and filter by category if needed
-                var allResults = pythonResult.results.Select(r => new SearchResultDto
-                {
-                    Fatwa = new FatwaResponseDto
-                    {
-                        FatwaId = r.fatwaId,
-                        Title = r.title,
-                        Question = r.question,
-                        Answer = r.answer,
-                        Category = r.category,
-                        Tags = r.tags ?? new List<string>(),
-                        Language = r.language,
-                        CreatedAt = DateTime.TryParse(r.createdAt, out var createdAt) ? createdAt : DateTime.UtcNow,
-                        UpdatedAt = DateTime.TryParse(r.updatedAt, out var updatedAt) ? updatedAt : DateTime.UtcNow
-                    },
-                    RelevanceScore = Math.Max(0.0, Math.Min(1.0, r.relevanceScore)) // Use actual relevance score from Python service
-                }).ToList();
-
-                // Apply category filtering if specified
-                var searchResults = categoryFatwaIds != null 
-                    ? allResults.Where(r => categoryFatwaIds.Contains(r.Fatwa.FatwaId)).ToList()
-                    : allResults;
-
-                // Sort by relevance score (descending) to ensure best results are first
-                searchResults = searchResults.OrderByDescending(r => r.RelevanceScore).ToList();
-
-                return new PaginatedSearchResponseDto
-                {
-                    Results = searchResults,
-                    TotalResults = pythonResult.totalCount,
-                    Page = pythonResult.page,
-                    PageSize = pythonResult.pageSize
-                };
+                // Use improved fallback search with category name filtering
+                return await FallbackTextSearchWithCategoryFilterAsync(query, language, page, pageSize, categoryNames);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error searching fatwas");
-                return await FallbackTextSearchAsync(query, language, page, pageSize, categoryFatwaIds);
+                return new PaginatedSearchResponseDto
+                {
+                    Results = new List<SearchResultDto>(),
+                    TotalResults = 0,
+                    Page = page,
+                    PageSize = pageSize
+                };
             }
         }
 
@@ -569,6 +510,55 @@ namespace IFTAA_Project.Services
                 Language = language,
                 CreatedAt = fatwa.CreatedAt,
                 UpdatedAt = fatwa.UpdatedAt
+            };
+        }
+
+        // Helper method to get category names for filtering
+        private List<string> GetCategoryAndChildrenNames(int categoryId)
+        {
+            // Use the same logic as CategoryService
+            return _categoryService.GetCategoryAndChildrenNames(categoryId);
+        }
+
+        // Improved fallback search with category name filtering
+        private async Task<PaginatedSearchResponseDto> FallbackTextSearchWithCategoryFilterAsync(string query, string language, int page, int pageSize, List<string>? categoryNames)
+        {
+            var searchText = string.IsNullOrWhiteSpace(query) ? "*" : query;
+            
+            var filterBuilder = Builders<Fatwa>.Filter;
+            FilterDefinition<Fatwa> filter = FilterDefinition<Fatwa>.Empty;
+
+            // Add text search if query is provided
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                filter = filterBuilder.Text(searchText);
+            }
+
+            // Add category filtering if category names are provided
+            if (categoryNames != null && categoryNames.Any())
+            {
+                var categoryFilter = filterBuilder.In(f => f.Category, categoryNames);
+                filter = filter == FilterDefinition<Fatwa>.Empty ? categoryFilter : filterBuilder.And(filter, categoryFilter);
+            }
+
+            var totalCount = await _dbContext.Fatwas.CountDocumentsAsync(filter);
+            var fatwas = await _dbContext.Fatwas.Find(filter)
+                                                .Skip((page - 1) * pageSize)
+                                                .Limit(pageSize)
+                                                .ToListAsync();
+
+            var results = fatwas.Select(fatwa => new SearchResultDto
+            {
+                Fatwa = MapToResponseDto(fatwa, language),
+                RelevanceScore = 0.5 // Default relevance score for text search
+            }).ToList();
+
+            return new PaginatedSearchResponseDto
+            {
+                Results = results,
+                TotalResults = (int)totalCount,
+                Page = page,
+                PageSize = pageSize
             };
         }
 

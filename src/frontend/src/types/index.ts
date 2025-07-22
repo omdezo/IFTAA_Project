@@ -103,7 +103,8 @@ export interface CategoryHierarchy {
   Description?: string;
   DescriptionEn?: string;
   Children?: CategoryHierarchy[];
-  IsActive: boolean;
+  IsActive?: boolean;
+  FatwaCount?: number;
 }
 
 // User Settings Types
@@ -187,6 +188,7 @@ export const API_ENDPOINTS = {
     LOGIN: '/api/auth/login',
     ME: '/api/auth/me',
     VALIDATE: '/api/auth/validate',
+    REFRESH: '/api/auth/refresh',
     ROLES: '/api/auth/roles'
   },
   FATWA: {

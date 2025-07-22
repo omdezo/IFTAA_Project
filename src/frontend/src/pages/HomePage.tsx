@@ -87,8 +87,9 @@ export const HomePage: React.FC = () => {
     }
   };
 
-  const handleCategoryClick = (categoryId: number, categoryTitle: string) => {
-    navigate(`/category/${categoryId}?name=${encodeURIComponent(categoryTitle)}`);
+  const handleCategoryClick = (category: CategoryHierarchy) => {
+    const title = language === 'ar' ? category.Title : (category.TitleEn || category.Title);
+    navigate(`/category/${category.Id}?name=${encodeURIComponent(title)}`);
   };
 
   const handleFatwaClick = (fatwaId: number) => {
@@ -99,7 +100,7 @@ export const HomePage: React.FC = () => {
     <div 
       key={category.Id} 
       className="group relative bg-white hover:bg-islamic-ivory rounded-xl border-2 border-neutral-200 hover:border-islamic-gold transition-all duration-300 cursor-pointer shadow-md hover:shadow-xl overflow-hidden"
-      onClick={() => handleCategoryClick(category.Id, category.Title)}
+      onClick={() => handleCategoryClick(category)}
     >
       {/* Islamic pattern overlay */}
       <div className="absolute inset-0 opacity-5 bg-gradient-to-br from-islamic-gold to-islamic-blue"></div>
@@ -110,7 +111,7 @@ export const HomePage: React.FC = () => {
           <h3 className={`text-xl font-bold text-islamic-blue group-hover:text-islamic-gold transition-colors ${
             isRTL ? 'text-right' : 'text-left'
           }`}>
-            {category.Title}
+            {language === 'ar' ? category.Title : (category.TitleEn || category.Title)}
           </h3>
           <div className="w-8 h-8 rounded-full bg-islamic-gold/10 flex items-center justify-center group-hover:bg-islamic-gold group-hover:text-white transition-all">
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -119,10 +120,31 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
         
+        {/* Fatwa count display */}
+        <div className="flex items-center justify-between text-sm text-neutral-600 mb-3">
+          <span className="flex items-center gap-1">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            {category.FatwaCount || 0} {language === 'ar' ? 'فتوى' : 'fatwas'}
+          </span>
+          {category.Children && category.Children.length > 0 && (
+            <span className="flex items-center gap-1 text-islamic-gold">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+              {category.Children.length} {language === 'ar' ? 'فئة فرعية' : 'subcategories'}
+            </span>
+          )}
+        </div>
+
         {/* Children subcategories */}
         {category.Children && category.Children.length > 0 && (
           <div className="space-y-2">
             <div className="h-px bg-gradient-to-r from-islamic-gold/30 to-transparent mb-3"></div>
+            <div className="text-xs text-neutral-500 mb-2 font-medium">
+              {language === 'ar' ? 'الفئات الفرعية:' : 'Subcategories:'}
+            </div>
             <div className="grid gap-2">
               {category.Children.map(child => (
                 <button 
@@ -132,11 +154,11 @@ export const HomePage: React.FC = () => {
                   } text-neutral-700 hover:text-islamic-blue font-medium`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleCategoryClick(child.Id, child.Title);
+                    handleCategoryClick(child);
                   }}
                 >
                   <span className="flex items-center justify-between">
-                    <span>{child.Title}</span>
+                    <span>{language === 'ar' ? child.Title : (child.TitleEn || child.Title)}</span>
                     <svg className="w-3 h-3 opacity-50" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                     </svg>

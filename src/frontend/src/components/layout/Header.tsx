@@ -59,19 +59,18 @@ export const Header: React.FC<HeaderProps> = ({
               to="/" 
               className="flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
-              {/* Islamic Logo */}
+              {/* IFTAA Book Logo */}
               <div className={cn(
                 "w-10 h-10 rounded-lg flex items-center justify-center",
                 isIslamicVariant
-                  ? "bg-islamic-gold"
+                  ? "bg-white/10"
                   : "bg-gradient-to-br from-islamic-gold to-islamic-gold-dark"
               )}>
-                <svg className={cn(
-                  "w-6 h-6",
-                  isIslamicVariant ? "text-islamic-blue" : "text-white"
-                )} fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 3L2 9v6c0 5.55 3.84 9.739 9 11 5.16-1.261 9-5.45 9-11V9l-10-6z"/>
-                </svg>
+                <img 
+                  src="/logo.svg" 
+                  alt="IFTAA Logo" 
+                  className="w-8 h-8"
+                />
               </div>
               
               <div className="hidden sm:block">

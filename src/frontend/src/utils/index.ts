@@ -166,17 +166,32 @@ export const storage = {
   get: <T>(key: string, defaultValue?: T): T | null => {
     try {
       const item = localStorage.getItem(key);
-      return item ? JSON.parse(item) : defaultValue || null;
-    } catch {
+      
+      if (!item) return defaultValue || null;
+      
+      // Special handling for JWT tokens which are plain strings
+      if (key === 'token') {
+        return item as T;
+      }
+      
+      // For other values, parse as JSON
+      return JSON.parse(item);
+    } catch (error) {
+      console.warn(`Failed to get from localStorage key '${key}':`, error);
       return defaultValue || null;
     }
   },
   
   set: (key: string, value: unknown): void => {
     try {
-      localStorage.setItem(key, JSON.stringify(value));
+      // Special handling for JWT tokens which are plain strings
+      if (key === 'token' && typeof value === 'string') {
+        localStorage.setItem(key, value);
+      } else {
+        localStorage.setItem(key, JSON.stringify(value));
+      }
     } catch (error) {
-      console.warn('Failed to save to localStorage:', error);
+      console.warn(`Failed to save to localStorage key '${key}':`, error);
     }
   },
   
@@ -184,7 +199,7 @@ export const storage = {
     try {
       localStorage.removeItem(key);
     } catch (error) {
-      console.warn('Failed to remove from localStorage:', error);
+      console.warn(`Failed to remove from localStorage key '${key}':`, error);
     }
   }
 };

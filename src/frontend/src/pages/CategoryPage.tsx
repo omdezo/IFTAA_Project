@@ -33,6 +33,7 @@ export const CategoryPage: React.FC = () => {
   });
   const [parentCategory, setParentCategory] = useState<CategoryHierarchy | null>(null);
   const [siblingCategories, setSiblingCategories] = useState<CategoryHierarchy[]>([]);
+  const [currentCategory, setCurrentCategory] = useState<CategoryHierarchy | null>(null);
 
   useEffect(() => {
     if (categoryId) {
@@ -94,10 +95,13 @@ export const CategoryPage: React.FC = () => {
       const subcategories: CategoryHierarchy[] = (response || []).map((cat: any) => ({
         Id: cat.Id || cat.id,
         Title: cat.Title || cat.title,
+        TitleEn: cat.TitleEn || cat.titleEn || cat.title_en, // Handle multiple possible field names
         ParentId: cat.ParentId || cat.parentId,
         Description: cat.Description || cat.description || '',
+        DescriptionEn: cat.DescriptionEn || cat.descriptionEn || cat.description_en,
         Children: [], // Children will be loaded when needed
-        IsActive: cat.IsActive !== undefined ? cat.IsActive : (cat.is_active !== undefined ? cat.is_active : true)
+        IsActive: cat.IsActive !== undefined ? cat.IsActive : (cat.is_active !== undefined ? cat.is_active : true),
+        FatwaCount: cat.FatwaCount || cat.fatwaCount || 0
       }));
       
       setSubcategories(subcategories);
@@ -115,28 +119,29 @@ export const CategoryPage: React.FC = () => {
       const hierarchy = await categoryApi.getHierarchy(language) as CategoryHierarchy[];
       
       // Find current category and its parent
-      let currentCategory: CategoryHierarchy | null = null;
+      let foundCurrentCategory: CategoryHierarchy | null = null;
       let parent: CategoryHierarchy | null = null;
       
       // Search in top-level categories
       for (const cat of hierarchy) {
         if (cat.Id === Number(categoryId)) {
-          currentCategory = cat;
+          foundCurrentCategory = cat;
           break;
         }
         // Search in children
         if (cat.Children) {
           for (const child of cat.Children) {
             if (child.Id === Number(categoryId)) {
-              currentCategory = child;
+              foundCurrentCategory = child;
               parent = cat;
               break;
             }
           }
         }
-        if (currentCategory) break;
+        if (foundCurrentCategory) break;
       }
       
+      setCurrentCategory(foundCurrentCategory);
       setParentCategory(parent);
       
       // If we found a parent, get all its children as siblings
@@ -147,38 +152,58 @@ export const CategoryPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to load parent and siblings:', error);
+      setCurrentCategory(null);
       setParentCategory(null);
       setSiblingCategories([]);
     }
   };
 
   const handleCategorySearch = async (query: string = searchQuery, page: number = 1) => {
+    console.log('=== SEARCH FUNCTION CALLED ===');
+    console.log('Query:', query);
+    console.log('CategoryId:', categoryId);
+    
     if (!query.trim()) {
+      console.log('Empty query, clearing results');
       setSearchResults([]);
       setHasSearched(false);
       setSearchPagination(prev => ({ ...prev, page: 1, totalResults: 0, totalPages: 0 }));
       return;
     }
 
+    console.log('Starting search...');
     setIsSearching(true);
     setHasSearched(true);
     
     try {
-      const response = await fatwaApi.search({
+      const searchParams = {
         query,
-        categoryId: Number(categoryId),
+        categoryId: categoryId && !isNaN(Number(categoryId)) ? Number(categoryId) : undefined,
         language,
         page,
         pageSize: searchPagination.pageSize
-      }) as PaginatedSearchResponse;
+      };
+
+      console.log('Search params:', searchParams);
       
-      setSearchResults(response.Results || []);
+      const response = await fatwaApi.search(searchParams) as PaginatedSearchResponse;
+      
+      console.log('Search response:', response);
+      console.log('Response.Results:', response.Results);
+      console.log('Response.Results length:', response.Results?.length);
+      
+      const results = response.Results || [];
+      console.log('Setting search results:', results);
+      
+      setSearchResults(results);
       setSearchPagination({
         page: response.Page || page,
         pageSize: response.PageSize || searchPagination.pageSize,
         totalResults: response.TotalResults || 0,
         totalPages: response.TotalPages || 0
       });
+      
+      console.log('Search completed. hasSearched:', true, 'results count:', results.length);
     } catch (error) {
       console.error('Category search failed:', error);
       setSearchResults([]);
@@ -200,8 +225,22 @@ export const CategoryPage: React.FC = () => {
     }
   };
 
-  const handleSubcategoryClick = (subcategoryId: number, subcategoryTitle: string) => {
-    navigate(`/category/${subcategoryId}?name=${encodeURIComponent(subcategoryTitle)}`);
+  // Helper function to get translated category title
+  const getCategoryTitle = (category: CategoryHierarchy) => {
+    return language === 'ar' ? category.Title : (category.TitleEn || category.Title);
+  };
+
+  // Helper function to get current category title with proper translation
+  const getCurrentCategoryTitle = () => {
+    if (currentCategory) {
+      return getCategoryTitle(currentCategory);
+    }
+    return categoryName; // Fallback to URL param
+  };
+
+  const handleSubcategoryClick = (subcategory: CategoryHierarchy) => {
+    const title = getCategoryTitle(subcategory);
+    navigate(`/category/${subcategory.Id}?name=${encodeURIComponent(title)}`);
   };
 
   const handleFatwaClick = (fatwaId: number) => {
@@ -233,8 +272,8 @@ export const CategoryPage: React.FC = () => {
               isRTL ? 'font-arabic' : 'font-english'
             }`}>
               {language === 'ar' 
-                ? `فئات أخرى في ${parentCategory.Title}`
-                : `Other categories in ${parentCategory.Title}`
+                ? `فئات أخرى في ${getCategoryTitle(parentCategory)}`
+                : `Other categories in ${getCategoryTitle(parentCategory)}`
               }
             </h3>
           </div>
@@ -243,13 +282,13 @@ export const CategoryPage: React.FC = () => {
             {/* Parent category button */}
             <button
               className="px-4 py-2 bg-islamic-blue text-white rounded-lg hover:bg-islamic-blue-dark transition-colors font-medium text-sm"
-              onClick={() => handleSubcategoryClick(parentCategory.Id, parentCategory.Title)}
+              onClick={() => handleSubcategoryClick(parentCategory)}
             >
               <span className="flex items-center gap-1">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2V7z" />
                 </svg>
-                {parentCategory.Title}
+                {getCategoryTitle(parentCategory)}
               </span>
             </button>
             
@@ -258,9 +297,9 @@ export const CategoryPage: React.FC = () => {
               <button
                 key={sibling.Id}
                 className="px-4 py-2 bg-white border-2 border-islamic-gold text-islamic-gold hover:bg-islamic-gold hover:text-white transition-colors rounded-lg font-medium text-sm"
-                onClick={() => handleSubcategoryClick(sibling.Id, sibling.Title)}
+                onClick={() => handleSubcategoryClick(sibling)}
               >
-                {sibling.Title}
+                {getCategoryTitle(sibling)}
               </button>
             ))}
           </div>
@@ -302,19 +341,35 @@ export const CategoryPage: React.FC = () => {
               <div
                 key={subcategory.Id}
                 className="group bg-white hover:bg-islamic-ivory rounded-lg border-2 border-neutral-200 hover:border-islamic-gold transition-all duration-300 cursor-pointer shadow-md hover:shadow-lg overflow-hidden"
-                onClick={() => handleSubcategoryClick(subcategory.Id, subcategory.Title)}
+                onClick={() => handleSubcategoryClick(subcategory)}
               >
                 <div className="p-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-3">
                     <h4 className={`font-semibold text-islamic-blue group-hover:text-islamic-gold transition-colors ${
                       isRTL ? 'text-right' : 'text-left'
                     }`}>
-                      {subcategory.Title}
+                      {getCategoryTitle(subcategory)}
                     </h4>
                     <div className="w-6 h-6 rounded-full bg-islamic-gold/10 flex items-center justify-center group-hover:bg-islamic-gold group-hover:text-white transition-all">
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                       </svg>
+                    </div>
+                  </div>
+                  
+                  {/* Subcategory info */}
+                  <div className="flex items-center gap-4 text-xs text-neutral-500">
+                    <div className="flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span>{subcategory.FatwaCount || 0} {language === 'ar' ? 'فتوى' : 'fatwas'}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-islamic-gold">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                      </svg>
+                      <span>{language === 'ar' ? 'فئة فرعية' : 'Subcategory'}</span>
                     </div>
                   </div>
                 </div>
@@ -405,8 +460,8 @@ export const CategoryPage: React.FC = () => {
           </div>
           <p className="text-lg text-neutral-600">
             {language === 'ar' 
-              ? `لم يتم العثور على نتائج في ${categoryName}`
-              : `No results found in ${categoryName}`
+              ? `لم يتم العثور على نتائج في ${getCurrentCategoryTitle()}`
+              : `No results found in ${getCurrentCategoryTitle()}`
             }
           </p>
         </div>
@@ -418,8 +473,8 @@ export const CategoryPage: React.FC = () => {
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-bold text-islamic-blue">
             {language === 'ar' 
-              ? `نتائج البحث في ${categoryName}`
-              : `Search Results in ${categoryName}`
+              ? `نتائج البحث في ${getCurrentCategoryTitle()}`
+              : `Search Results in ${getCurrentCategoryTitle()}`
             }
             <span className="text-sm font-normal text-neutral-500 ml-2">
               ({searchResults.length} {language === 'ar' ? 'نتيجة' : 'results'})
@@ -470,8 +525,8 @@ export const CategoryPage: React.FC = () => {
           </div>
           <p className="text-lg text-neutral-600">
             {language === 'ar' 
-              ? `لا توجد فتاوى في ${categoryName}`
-              : `No fatwas found in ${categoryName}`
+              ? `لا توجد فتاوى في ${getCurrentCategoryTitle()}`
+              : `No fatwas found in ${getCurrentCategoryTitle()}`
             }
           </p>
         </div>
@@ -485,8 +540,8 @@ export const CategoryPage: React.FC = () => {
             isRTL ? 'font-arabic' : 'font-english'
           }`}>
             {language === 'ar' 
-              ? `فتاوى ${categoryName}`
-              : `Fatwas in ${categoryName}`
+              ? `فتاوى ${getCurrentCategoryTitle()}`
+              : `Fatwas in ${getCurrentCategoryTitle()}`
             }
             <span className="text-sm font-normal text-neutral-500 ml-2">
               ({categoryFatwas.length} {language === 'ar' ? 'فتوى' : 'fatwas'})
@@ -516,17 +571,32 @@ export const CategoryPage: React.FC = () => {
     );
   };
 
-  // Create breadcrumb items for the Header
-  const breadcrumbItems = [
-    { label: t('nav.home'), path: '/' },
-    { label: categoryName }
-  ];
+  // Create breadcrumb items for the Header with proper hierarchy
+  const createBreadcrumbItems = () => {
+    const items = [{ label: t('nav.home'), path: '/' }];
+    
+    if (parentCategory) {
+      // If this is a child category, show parent first
+      const parentTitle = getCategoryTitle(parentCategory);
+      items.push({ 
+        label: parentTitle, 
+        path: `/category/${parentCategory.Id}?name=${encodeURIComponent(parentTitle)}` 
+      });
+    }
+    
+    // Add current category with proper translation
+    items.push({ label: getCurrentCategoryTitle() });
+    
+    return items;
+  };
+
+  const breadcrumbItems = createBreadcrumbItems();
 
   return (
     <div className={`min-h-screen bg-gradient-to-br from-islamic-ivory via-white to-neutral-50 ${isRTL ? 'rtl' : 'ltr'}`}>
       {/* Use the new Header component */}
       <Header 
-        title={categoryName}
+        title={getCurrentCategoryTitle()}
         subtitle={language === 'ar' 
           ? 'ابحث في هذه الفئة وجميع الفئات الفرعية'
           : 'Search in this category and all its subcategories'
@@ -534,6 +604,68 @@ export const CategoryPage: React.FC = () => {
         breadcrumbItems={breadcrumbItems}
         variant="islamic"
       />
+
+      {/* Category Navigation Helper */}
+      <section className="py-6 bg-gradient-to-r from-islamic-blue/5 to-islamic-gold/5 border-b border-neutral-200">
+        <div className="max-w-7xl mx-auto px-4">
+          {parentCategory ? (
+            // This is a subcategory
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-islamic-gold/20">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-islamic-gold/10 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-islamic-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm text-neutral-600">
+                      {language === 'ar' ? 'فئة فرعية' : 'Subcategory'}
+                    </p>
+                    <p className="font-semibold text-islamic-blue">
+                      {language === 'ar' 
+                        ? `جزء من: ${getCategoryTitle(parentCategory)}`
+                        : `Part of: ${getCategoryTitle(parentCategory)}`
+                      }
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => handleSubcategoryClick(parentCategory)}
+                  className="flex items-center gap-2 bg-islamic-blue text-white px-4 py-2 rounded-lg hover:bg-islamic-blue-dark transition-colors text-sm font-medium"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
+                  </svg>
+                  {language === 'ar' ? 'عرض الفئة الرئيسية' : 'View Main Category'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            // This is a main category
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-islamic-blue/20">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-islamic-blue/10 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-islamic-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm text-neutral-600">
+                    {language === 'ar' ? 'فئة رئيسية' : 'Main Category'}
+                  </p>
+                  <p className="font-semibold text-islamic-blue">
+                    {language === 'ar' 
+                      ? 'تحتوي على فئات فرعية وفتاوى'
+                      : 'Contains subcategories and fatwas'
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Enhanced Search Section */}
       <section className="py-8 bg-white border-b border-neutral-200">
@@ -543,8 +675,8 @@ export const CategoryPage: React.FC = () => {
               isRTL ? 'font-arabic' : 'font-english'
             }`}>
               {language === 'ar' 
-                ? `البحث في ${categoryName}`
-                : `Search in ${categoryName}`
+                ? `البحث في ${getCurrentCategoryTitle()}`
+                : `Search in ${getCurrentCategoryTitle()}`
               }
             </h2>
             <p className={`text-neutral-600 ${
@@ -566,8 +698,8 @@ export const CategoryPage: React.FC = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder={language === 'ar' 
-                    ? `ابحث في ${categoryName}...`
-                    : `Search in ${categoryName}...`
+                    ? `ابحث في ${getCurrentCategoryTitle()}...`
+                    : `Search in ${getCurrentCategoryTitle()}...`
                   }
                   className={`w-full px-6 py-4 text-lg border-2 border-neutral-200 rounded-xl focus:border-islamic-gold focus:ring-4 focus:ring-islamic-gold/10 outline-none transition-all ${
                     isRTL ? 'text-right pr-12' : 'text-left pl-12'
@@ -610,6 +742,35 @@ export const CategoryPage: React.FC = () => {
 
       {/* Subcategories with beautiful cards */}
       {renderSubcategories()}
+
+      {/* Content Info Section */}
+      <section className="py-6 bg-neutral-50">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="bg-white rounded-lg border border-neutral-200 p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-islamic-blue/10 flex items-center justify-center">
+                <svg className="w-4 h-4 text-islamic-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-neutral-700">
+                  {parentCategory 
+                    ? (language === 'ar' 
+                        ? `عرض الفتاوى من فئة "${getCurrentCategoryTitle()}" فقط. للاطلاع على جميع فتاوى الفئة الرئيسية، انقر على الرابط أعلاه.`
+                        : `Showing fatwas from "${getCurrentCategoryTitle()}" subcategory only. To view all fatwas from the main category, click the link above.`
+                      )
+                    : (language === 'ar'
+                        ? `عرض جميع الفتاوى من فئة "${getCurrentCategoryTitle()}" وجميع الفئات الفرعية التابعة لها.`
+                        : `Showing all fatwas from "${getCurrentCategoryTitle()}" category and all its subcategories.`
+                      )
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Category Fatwas */}
       <section className="py-8">

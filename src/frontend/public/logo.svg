@@ -1,11 +1,33 @@
 <svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
   <defs>
+    <!-- Islamic Gold Gradients -->
     <linearGradient id="islamicGold" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#E8C466;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#D4AF37;stop-opacity:1" />
       <stop offset="100%" style="stop-color:#B8941F;stop-opacity:1" />
     </linearGradient>
+    
+    <!-- Islamic Blue Gradients -->
+    <linearGradient id="islamicBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2E5F94;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#1F4E79;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#153A5B;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Book spine gradient -->
+    <linearGradient id="bookSpine" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#B8941F;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#D4AF37;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Drop shadow filter -->
+    <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="3" stdDeviation="2" flood-color="#153A5B" flood-opacity="0.3"/>
+    </filter>
+    
+    <!-- Glow effect -->
     <filter id="glow">
-      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
       <feMerge> 
         <feMergeNode in="coloredBlur"/>
         <feMergeNode in="SourceGraphic"/>
@@ -13,24 +35,75 @@
     </filter>
   </defs>
   
-  <!-- Background circle -->
-  <circle cx="50" cy="50" r="45" fill="url(#islamicGold)" filter="url(#glow)"/>
-  
-  <!-- Islamic star pattern -->
-  <g fill="white" opacity="0.9">
-    <!-- 8-pointed star -->
-    <path d="M50 15 L55 35 L75 30 L60 45 L80 50 L60 55 L75 70 L55 65 L50 85 L45 65 L25 70 L40 55 L20 50 L40 45 L25 30 L45 35 Z"/>
+  <!-- Main Book Body -->
+  <g filter="url(#dropShadow)">
+    <!-- Book background -->
+    <rect x="25" y="20" width="50" height="60" rx="3" ry="3" fill="url(#islamicBlue)"/>
+    
+    <!-- Book spine -->
+    <rect x="25" y="20" width="6" height="60" rx="3" ry="3" fill="url(#bookSpine)"/>
+    
+    <!-- Book pages -->
+    <rect x="31" y="22" width="42" height="56" rx="2" ry="2" fill="#FFFFFF"/>
+    
+    <!-- Page lines (simulating text) -->
+    <g stroke="#E5E7EB" stroke-width="0.8" opacity="0.7">
+      <line x1="35" y1="30" x2="65" y2="30"/>
+      <line x1="35" y1="34" x2="68" y2="34"/>
+      <line x1="35" y1="38" x2="62" y2="38"/>
+      <line x1="35" y1="42" x2="67" y2="42"/>
+      <line x1="35" y1="46" x2="64" y2="46"/>
+      <line x1="35" y1="50" x2="66" y2="50"/>
+      <line x1="35" y1="54" x2="63" y2="54"/>
+      <line x1="35" y1="58" x2="68" y2="58"/>
+      <line x1="35" y1="62" x2="61" y2="62"/>
+      <line x1="35" y1="66" x2="65" y2="66"/>
+      <line x1="35" y1="70" x2="64" y2="70"/>
+    </g>
   </g>
   
-  <!-- Central geometric pattern -->
-  <g fill="white" opacity="0.8">
-    <circle cx="50" cy="50" r="8"/>
-    <circle cx="50" cy="50" r="4" fill="url(#islamicGold)"/>
+  <!-- Arabic Calligraphy Symbol -->
+  <g transform="translate(50, 35)" filter="url(#glow)">
+    <!-- Stylized Arabic letter or Islamic geometric pattern -->
+    <path d="M-8,-8 Q-10,-12 -6,-12 Q-2,-12 0,-8 Q2,-12 6,-12 Q10,-12 8,-8 Q6,-4 2,-6 Q0,-4 -2,-6 Q-6,-4 -8,-8 Z" 
+          fill="url(#islamicGold)" stroke="#B8941F" stroke-width="0.5"/>
+    
+    <!-- Central dot -->
+    <circle cx="0" cy="-8" r="1.5" fill="#153A5B"/>
   </g>
   
-  <!-- Arabic calligraphy style decoration -->
-  <g stroke="white" stroke-width="2" fill="none" opacity="0.6">
-    <path d="M35 50 Q45 40 55 50 Q65 60 75 50"/>
-    <path d="M25 50 Q35 60 45 50 Q55 40 65 50"/>
+  <!-- Book bookmark ribbon -->
+  <g>
+    <rect x="70" y="20" width="3" height="25" fill="url(#islamicGold)"/>
+    <path d="M70 45 L73 45 L71.5 40 Z" fill="url(#islamicGold)"/>
+  </g>
+  
+  <!-- Decorative corner elements -->
+  <g fill="url(#islamicGold)" opacity="0.8">
+    <!-- Top left corner -->
+    <path d="M28 23 L31 23 L31 26 L30 26 L30 24 L28 24 Z"/>
+    <!-- Top right corner -->
+    <path d="M70 23 L70 26 L69 26 L69 24 L67 24 L67 23 Z"/>
+    <!-- Bottom left corner -->
+    <path d="M28 76 L28 74 L30 74 L30 75 L31 75 L31 76 Z"/>
+    <!-- Bottom right corner -->
+    <path d="M70 76 L67 76 L67 75 L69 75 L69 74 L70 74 Z"/>
+  </g>
+  
+  <!-- Islamic geometric pattern on book cover -->
+  <g transform="translate(50, 50)" fill="url(#islamicGold)" opacity="0.9">
+    <!-- 8-pointed star (Khatam) -->
+    <path d="M0,-6 L2,-3 L6,-4 L3,-1 L4,3 L1,1 L-2,4 L-1,0 L-5,1 L-2,-2 L-3,-6 L0,-3 Z" 
+          transform="scale(0.8)"/>
+  </g>
+  
+  <!-- Subtle highlight on book edge -->
+  <rect x="72" y="21" width="1" height="58" fill="#FFFFFF" opacity="0.4"/>
+  
+  <!-- Arabic text style decoration on spine -->
+  <g transform="translate(28, 50)" fill="#FFFFFF" opacity="0.7">
+    <rect x="0" y="-15" width="1" height="30"/>
+    <rect x="2" y="-10" width="1" height="20"/>
+    <rect x="1" y="-8" width="1" height="16"/>
   </g>
 </svg>

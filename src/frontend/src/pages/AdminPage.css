@@ -969,6 +969,269 @@
   gap: 1rem;
 }
 
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.category-card {
+  background: white;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.category-card:hover {
+  border-color: var(--c-primary);
+  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.2);
+  transform: translateY(-2px);
+}
+
+.category-card .category-header h3 {
+  color: #B8860B;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.category-stats {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.fatwa-count, .subcategory-count {
+  background: var(--c-primary-light);
+  color: var(--c-primary);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.category-actions {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.subcategories {
+  margin-top: 1rem;
+}
+
+.subcategories h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.subcategory-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.subcategory-item:hover {
+  background: var(--c-primary-light);
+}
+
+.subcategory-name {
+  font-weight: 500;
+  color: var(--c-text);
+  flex: 1;
+}
+
+.subcategory-count {
+  background: var(--c-secondary-light);
+  color: var(--c-secondary);
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
+}
+
+/* New expandable category tree styles */
+.category-header.clickable,
+.subcategory-header.clickable {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+}
+
+.category-header.clickable:hover,
+.subcategory-header.clickable:hover {
+  background-color: var(--c-primary-light);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.15);
+}
+
+.expand-icon {
+  display: inline-block;
+  transition: transform 0.3s ease;
+  margin-right: 0.75rem;
+  font-size: 1rem;
+  color: var(--c-primary);
+  font-weight: bold;
+}
+
+.expand-icon.expanded {
+  transform: rotate(90deg);
+  color: var(--c-secondary);
+}
+
+.category-tree .category-group .category-header h3 {
+  color: #B8860B !important;
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.subcategories-section {
+  margin-left: 1.5rem;
+  margin-top: 1rem;
+  border-left: 3px solid var(--c-primary);
+  padding-left: 1.5rem;
+  background: linear-gradient(to right, var(--c-primary-light), transparent);
+  border-radius: 0 8px 8px 0;
+}
+
+.subcategory-group {
+  margin-bottom: 1rem;
+}
+
+.subcategory-header {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: white;
+  border: 2px solid var(--c-muted);
+  border-radius: 12px;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.subcategory-header h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--c-secondary);
+  flex: 1;
+}
+
+.subcategory-content {
+  margin-left: 1.5rem;
+  border-left: 2px solid var(--c-secondary-light);
+  padding-left: 1.5rem;
+  background: linear-gradient(to right, var(--c-secondary-light), transparent);
+  border-radius: 0 8px 8px 0;
+}
+
+.fatwa-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  background: white;
+  border: 2px solid var(--c-muted);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.fatwa-item:hover {
+  border-color: var(--c-primary);
+  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.2);
+  transform: translateY(-2px);
+}
+
+.fatwa-item.child {
+  margin-left: 1rem;
+  background: var(--c-bg);
+  border-left: 4px solid var(--c-primary);
+  border-color: var(--c-secondary-light);
+}
+
+.fatwa-item.child:hover {
+  border-color: var(--c-secondary);
+  box-shadow: 0 4px 16px rgba(33, 150, 243, 0.15);
+}
+
+.fatwa-info h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--c-secondary);
+  line-height: 1.4;
+}
+
+.fatwa-info p {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+  color: var(--c-text-secondary);
+  line-height: 1.5;
+}
+
+.fatwa-id {
+  font-weight: 700;
+  color: var(--c-primary) !important;
+  background: var(--c-primary-light);
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.fatwa-category {
+  color: var(--c-secondary) !important;
+  font-weight: 600;
+}
+
+.fatwa-date {
+  color: var(--c-text-muted) !important;
+  font-style: italic;
+}
+
+.fatwa-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  align-items: flex-start;
+}
+
+.loading-spinner.small {
+  font-size: 1rem;
+  margin-left: 0.75rem;
+  color: var(--c-primary);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.no-fatwas {
+  text-align: center;
+  color: var(--c-text-secondary);
+  font-style: italic;
+  font-weight: 500;
+  padding: 2.5rem;
+  background: linear-gradient(135deg, var(--c-bg) 0%, var(--c-primary-light) 100%);
+  border: 2px dashed var(--c-muted);
+  border-radius: 12px;
+  margin: 1.5rem 0;
+}
+
 .category-group {
   background: white;
   border-radius: 1rem;
@@ -1377,4 +1640,50 @@
   color: #1565c0;
   font-size: 0.9rem;
   margin-top: 1rem;
+}
+/* Category Management */
+.category-management {
+  padding: 2rem;
+  background: var(--c-bg);
+  min-height: 70vh;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.section-header h2 {
+  font-size: 2rem;
+  color: var(--c-secondary);
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.section-description {
+  font-size: 1.1rem;
+  color: var(--c-text-secondary);
+  margin-bottom: 0;
+}
+
+.loading-categories {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 40vh;
+}
+
+.categories-grid {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.no-categories {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 40vh;
+  text-align: center;
 }
