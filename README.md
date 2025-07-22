@@ -49,8 +49,7 @@ docker-compose ps
 
 | Username | Password | Role |
 |----------|----------|------|
-| admin | IftaaAdmin2024! | Admin |
-| user | IftaaUser2024! | User |
+| admin | admin123 | Admin |
 
 ## API Examples
 
@@ -74,7 +73,7 @@ curl "http://localhost:8080/api/category"
 ```bash
 curl -X POST "http://localhost:8080/api/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"IftaaAdmin2024!"}'
+  -d '{"username":"admin","password":"admin123"}'
 ```
 
 ## Main Category Structure
